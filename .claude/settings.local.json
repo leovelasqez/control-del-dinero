@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"C:/Users/pc/Desktop/proyectos-claude-code/control-del-dinero\" && npm create vite@latest temp-project -- --template react 2>&1)",
+      "Bash(cd \"C:/Users/pc/Desktop/proyectos-claude-code/control-del-dinero\" && npm install @supabase/supabase-js recharts xlsx react-router-dom react-hot-toast lucide-react 2>&1)"
+    ]
+  }
+}
