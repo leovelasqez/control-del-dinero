@@ -2,6 +2,12 @@ import { Download, FileText } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { formatCOP } from '../lib/constants'
 
+function escapeHtml(text) {
+  const div = document.createElement('div')
+  div.textContent = String(text ?? '')
+  return div.innerHTML
+}
+
 export default function ExportButtons({ transactions, budgets, goals, debts }) {
   const exportExcel = () => {
     const wb = XLSX.utils.book_new()
@@ -66,11 +72,11 @@ export default function ExportButtons({ transactions, budgets, goals, debts }) {
         <tr><th>Fecha</th><th>Tipo</th><th>Categoria</th><th>Descripcion</th><th>Monto</th></tr>
         ${transactions.map(t => `
           <tr>
-            <td>${t.date}</td>
-            <td>${t.type}</td>
-            <td>${t.category}</td>
-            <td>${t.description}</td>
-            <td class="${t.type === 'ingreso' ? 'green' : 'red'}">${formatCOP(t.amount)}</td>
+            <td>${escapeHtml(t.date)}</td>
+            <td>${escapeHtml(t.type)}</td>
+            <td>${escapeHtml(t.category)}</td>
+            <td>${escapeHtml(t.description)}</td>
+            <td class="${t.type === 'ingreso' ? 'green' : 'red'}">${escapeHtml(formatCOP(t.amount))}</td>
           </tr>
         `).join('')}
       </table>
@@ -80,10 +86,10 @@ export default function ExportButtons({ transactions, budgets, goals, debts }) {
           <tr><th>Nombre</th><th>Saldo Actual</th><th>Cuota Minima</th><th>Tasa</th></tr>
           ${debts.map(d => `
             <tr>
-              <td>${d.name}</td>
-              <td class="red">${formatCOP(d.current_balance)}</td>
-              <td>${formatCOP(d.minimum_payment)}</td>
-              <td>${d.interest_rate}%</td>
+              <td>${escapeHtml(d.name)}</td>
+              <td class="red">${escapeHtml(formatCOP(d.current_balance))}</td>
+              <td>${escapeHtml(formatCOP(d.minimum_payment))}</td>
+              <td>${escapeHtml(d.interest_rate)}%</td>
             </tr>
           `).join('')}
         </table>

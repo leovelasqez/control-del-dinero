@@ -1,6 +1,11 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const EXPENSE_CATEGORIES = [
+  'Comida', 'Transporte', 'Entretenimiento', 'Salud',
+  'Educación', 'Vivienda', 'Ropa', 'Otros'
+]
+
 function anthropicProxy(env) {
   return {
     name: 'anthropic-proxy',
@@ -12,10 +17,10 @@ function anthropicProxy(env) {
           return
         }
 
-        const ANTHROPIC_API_KEY = env.VITE_ANTHROPIC_API_KEY
+        const ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY
         if (!ANTHROPIC_API_KEY) {
           res.statusCode = 500
-          res.end(JSON.stringify({ error: 'VITE_ANTHROPIC_API_KEY no configurada en .env' }))
+          res.end(JSON.stringify({ error: 'ANTHROPIC_API_KEY no configurada en .env' }))
           return
         }
 
@@ -43,7 +48,7 @@ function anthropicProxy(env) {
                       { type: 'text', text: `Analiza este recibo/factura y extrae la información en formato JSON exacto:
 {
   "date": "YYYY-MM-DD",
-  "category": "una de: Comida, Transporte, Entretenimiento, Salud, Educación, Vivienda, Ropa, Otros",
+  "category": "una de: ${EXPENSE_CATEGORIES.join(', ')}",
   "description": "descripción breve del gasto",
   "amount": número sin formato (solo el número)
 }
@@ -56,10 +61,16 @@ Solo responde con el JSON, sin texto adicional. La moneda es pesos colombianos (
               const data = await response.json()
               if (!response.ok) throw new Error(data.error?.message || 'Error de Anthropic')
               const text = data.content[0].text
-              const jsonMatch = text.match(/\{[\s\S]*\}/)
+              const jsonMatch = text.match(/\{[^{}]*\}/)
               if (!jsonMatch) throw new Error('No se pudo extraer JSON del recibo')
+              let parsed
+              try {
+                parsed = JSON.parse(jsonMatch[0])
+              } catch {
+                throw new Error('El JSON extraído del recibo no es válido')
+              }
               res.setHeader('Content-Type', 'application/json')
-              res.end(jsonMatch[0])
+              res.end(JSON.stringify(parsed))
               return
             }
 

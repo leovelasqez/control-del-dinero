@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Plus, Trash2, CreditCard, Pencil, X } from 'lucide-react'
 import { formatCOP } from '../lib/constants'
+import toast from 'react-hot-toast'
 
 export default function DebtsPage({ debts, onAdd, onPay, onUpdate, onDelete, onAddTransaction }) {
   const [showForm, setShowForm] = useState(false)
@@ -49,15 +50,23 @@ export default function DebtsPage({ debts, onAdd, onPay, onUpdate, onDelete, onA
   const handlePay = async (debtId, debtName) => {
     const amount = Number(payAmount)
     if (!amount || amount <= 0) return
-    const result = await onPay(debtId, amount)
-    if (result) {
-      await onAddTransaction({
-        date: new Date().toISOString().split('T')[0],
-        type: 'gasto',
-        category: 'Otros',
-        description: `Abono deuda: ${debtName}`,
-        amount
-      })
+    try {
+      const result = await onPay(debtId, amount)
+      if (result) {
+        try {
+          await onAddTransaction({
+            date: new Date().toISOString().split('T')[0],
+            type: 'gasto',
+            category: 'Otros',
+            description: `Abono deuda: ${debtName}`,
+            amount
+          })
+        } catch {
+          toast.error('El abono se registró pero no se pudo crear la transacción de gasto.')
+        }
+      }
+    } catch {
+      toast.error('Error al registrar el abono.')
     }
     setPayingDebt(null)
     setPayAmount('')

@@ -1,6 +1,11 @@
 // Vercel Serverless Function - Proxy seguro para Anthropic API
 // La API key nunca se expone al frontend
 
+const EXPENSE_CATEGORIES = [
+  'Comida', 'Transporte', 'Entretenimiento', 'Salud',
+  'Educación', 'Vivienda', 'Ropa', 'Otros'
+]
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -37,7 +42,7 @@ export default async function handler(req, res) {
                 text: `Analiza este recibo/factura y extrae la información en formato JSON exacto:
 {
   "date": "YYYY-MM-DD",
-  "category": "una de: Comida, Transporte, Entretenimiento, Salud, Educación, Vivienda, Ropa, Otros",
+  "category": "una de: ${EXPENSE_CATEGORIES.join(', ')}",
   "description": "descripción breve del gasto",
   "amount": número sin formato (solo el número)
 }
@@ -52,10 +57,17 @@ Solo responde con el JSON, sin texto adicional. La moneda es pesos colombianos (
       if (!response.ok) throw new Error(data.error?.message || 'Error de Anthropic')
 
       const text = data.content[0].text
-      const jsonMatch = text.match(/\{[\s\S]*\}/)
+      const jsonMatch = text.match(/\{[^{}]*\}/)
       if (!jsonMatch) throw new Error('No se pudo extraer JSON del recibo')
 
-      return res.status(200).json(JSON.parse(jsonMatch[0]))
+      let parsed
+      try {
+        parsed = JSON.parse(jsonMatch[0])
+      } catch {
+        throw new Error('El JSON extraído del recibo no es válido')
+      }
+
+      return res.status(200).json(parsed)
     }
 
     if (action === 'monthly-report') {

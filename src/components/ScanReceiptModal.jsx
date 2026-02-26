@@ -18,6 +18,12 @@ export default function ScanReceiptModal({ onClose, onAdd }) {
       return
     }
 
+    const MAX_SIZE = 5 * 1024 * 1024 // 5MB
+    if (file.size > MAX_SIZE) {
+      toast.error('La imagen es muy grande. Máximo 5MB.')
+      return
+    }
+
     setScanning(true)
     try {
       const reader = new FileReader()
