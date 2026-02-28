@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { X, Upload, Loader, Check, SkipForward, RotateCcw, AlertTriangle } from 'lucide-react'
+import { X, Upload, Loader, Check, SkipForward, RotateCcw, AlertTriangle, Lock } from 'lucide-react'
 import { extractTextFromPDF } from '../lib/pdfExtractor'
 import { extractStatement } from '../api/anthropic'
 import { formatCOP } from '../lib/constants'
@@ -13,6 +13,7 @@ export default function UploadStatementModal({ onClose, onAdd }) {
   const [files, setFiles] = useState([])
   const [progress, setProgress] = useState({ current: 0, total: 0, fileName: '' })
   const [results, setResults] = useState([])
+  const [passwords, setPasswords] = useState({})
   const fileRef = useRef(null)
 
   const handleFileSelect = (e) => {
@@ -66,7 +67,11 @@ export default function UploadStatementModal({ onClose, onAdd }) {
         const data = await extractStatement(text, file.name)
         fileResults.push({ fileName: file.name, error: null, data, editing: { ...data } })
       } catch (err) {
-        fileResults.push({ fileName: file.name, error: err.message, data: null })
+        if (err.message === 'PASSWORD_REQUIRED') {
+          fileResults.push({ fileName: file.name, error: null, data: null, needsPassword: true })
+        } else {
+          fileResults.push({ fileName: file.name, error: err.message, data: null })
+        }
       }
     }
 
@@ -74,18 +79,64 @@ export default function UploadStatementModal({ onClose, onAdd }) {
     setPhase('results')
   }
 
+  const handleUnlock = async (index) => {
+    const file = files[index]
+    const password = passwords[index]
+    if (!file || !password) return
+
+    setResults(prev => prev.map((r, i) => i === index ? { ...r, unlocking: true, passwordError: null } : r))
+
+    try {
+      const text = await extractTextFromPDF(file, password)
+
+      if (text.trim().length < 50) {
+        setResults(prev => prev.map((r, i) => i === index ? {
+          fileName: file.name,
+          error: 'El PDF no contiene texto legible. Puede ser un documento escaneado como imagen.',
+          data: null, needsPassword: false, unlocking: false
+        } : r))
+        return
+      }
+
+      const data = await extractStatement(text, file.name)
+      setResults(prev => prev.map((r, i) => i === index ? {
+        fileName: file.name, error: null, data, editing: { ...data },
+        needsPassword: false, unlocking: false
+      } : r))
+    } catch (err) {
+      if (err.message === 'INCORRECT_PASSWORD') {
+        setResults(prev => prev.map((r, i) => i === index ? {
+          ...prev[i], passwordError: 'Contraseña incorrecta', unlocking: false
+        } : r))
+      } else {
+        setResults(prev => prev.map((r, i) => i === index ? {
+          fileName: file.name, error: err.message, data: null,
+          needsPassword: false, unlocking: false
+        } : r))
+      }
+    }
+  }
+
   const handleRetry = async (index) => {
     const file = files[index]
     if (!file) return
 
+    const password = passwords[index]
     setResults(prev => prev.map((r, i) => i === index ? { ...r, error: null, retrying: true } : r))
 
     try {
-      const text = await extractTextFromPDF(file)
+      const text = await extractTextFromPDF(file, password)
       const data = await extractStatement(text, file.name)
       setResults(prev => prev.map((r, i) => i === index ? { fileName: file.name, error: null, data, editing: { ...data }, retrying: false } : r))
     } catch (err) {
-      setResults(prev => prev.map((r, i) => i === index ? { ...prev[i], error: err.message, retrying: false } : r))
+      if (err.message === 'PASSWORD_REQUIRED') {
+        setResults(prev => prev.map((r, i) => i === index ? {
+          fileName: file.name, error: null, data: null,
+          needsPassword: true, retrying: false
+        } : r))
+      } else {
+        setResults(prev => prev.map((r, i) => i === index ? { ...prev[i], error: err.message, retrying: false } : r))
+      }
     }
   }
 
@@ -137,8 +188,8 @@ export default function UploadStatementModal({ onClose, onAdd }) {
     setResults(prev => prev.map((r, i) => i === index ? { ...r, skipped: true } : r))
   }
 
-  const allDone = results.length > 0 && results.every(r => r.confirmed || r.skipped || r.error)
-  const pendingResults = results.filter(r => !r.confirmed && !r.skipped && !r.error && r.data)
+  const allDone = results.length > 0 && results.every(r => r.confirmed || r.skipped || r.error || r.needsPassword)
+  const pendingResults = results.filter(r => !r.confirmed && !r.skipped && !r.error && !r.needsPassword && r.data)
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -209,6 +260,53 @@ export default function UploadStatementModal({ onClose, onAdd }) {
                     <div className="flex items-center gap-2">
                       <SkipForward size={16} style={{ color: 'var(--text-muted)' }} />
                       <span className="text-sm text-muted">{result.fileName} — Omitido</span>
+                    </div>
+                  </div>
+                )
+              }
+
+              if (result.needsPassword) {
+                return (
+                  <div key={idx} className="card mb-3" style={{ borderColor: '#f59e0b' }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Lock size={16} style={{ color: '#f59e0b' }} />
+                      <span className="text-sm" style={{ fontWeight: 600 }}>{result.fileName}</span>
+                    </div>
+                    <p className="text-sm text-muted mb-2">Este PDF esta protegido con contraseña.</p>
+                    <div className="form-group mb-2">
+                      <input
+                        type="password"
+                        className="form-input"
+                        placeholder="Contraseña del PDF"
+                        value={passwords[idx] || ''}
+                        onChange={e => setPasswords(prev => ({ ...prev, [idx]: e.target.value }))}
+                        onKeyDown={e => { if (e.key === 'Enter' && passwords[idx]) handleUnlock(idx) }}
+                        disabled={result.unlocking}
+                      />
+                    </div>
+                    <p className="text-xs text-muted mb-3">Generalmente es tu numero de cedula</p>
+                    {result.passwordError && (
+                      <p className="text-sm mb-2" style={{ color: '#ef4444' }}>{result.passwordError}</p>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        style={{ flex: 1 }}
+                        onClick={() => handleSkip(idx)}
+                      >
+                        <SkipForward size={14} /> Omitir
+                      </button>
+                      <button
+                        className="btn btn-primary btn-sm"
+                        style={{ flex: 1 }}
+                        onClick={() => handleUnlock(idx)}
+                        disabled={!passwords[idx] || result.unlocking}
+                      >
+                        {result.unlocking
+                          ? <><Loader size={14} className="spinner" style={{ border: 'none', animation: 'spin 1s linear infinite' }} /> Desbloqueando...</>
+                          : <><Lock size={14} /> Desbloquear</>
+                        }
+                      </button>
                     </div>
                   </div>
                 )

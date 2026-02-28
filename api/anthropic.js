@@ -121,13 +121,13 @@ Analiza el siguiente texto extraído de un PDF de extracto de tarjeta de crédit
 {
   "bank_name": "nombre del banco",
   "card_last_four": "últimos 4 dígitos de la tarjeta (si aplica)",
-  "total_owed": número total a pagar (saldo total),
-  "minimum_payment": número pago mínimo,
+  "total_owed": número total a pagar (saldo total de la deuda, incluye compras + intereses + todo),
+  "minimum_payment": número pago mínimo requerido,
   "payment_deadline": "YYYY-MM-DD fecha límite de pago",
   "monthly_interest_rate": número tasa de interés mensual (porcentaje),
   "annual_interest_rate": número tasa efectiva anual (porcentaje),
-  "period_interest": número intereses cobrados en el periodo,
-  "overdue_balance": número saldo en mora (0 si no hay),
+  "period_interest": número intereses cobrados en el periodo actual,
+  "overdue_balance": número saldo en mora (SOLO cuotas vencidas/atrasadas, NO el saldo total. Si no hay mora, usa 0),
   "cash_advances": número avances en efectivo (0 si no hay)
 }
 
@@ -137,6 +137,7 @@ REGLAS:
 - Si un campo no se encuentra, usa null
 - Para tasas de interés, extrae el porcentaje numérico (ej: 2.5 para 2.5%)
 - El nombre del banco debe ser el nombre comercial (ej: "Bancolombia", "Nu", "Rappi")
+- IMPORTANTE: "overdue_balance" es SOLO el monto vencido/en mora, NO confundir con el saldo total. Si el extracto no menciona mora explícitamente, usa 0
 
 NOMBRE DEL ARCHIVO: ${fileName || 'extracto.pdf'}
 
@@ -153,6 +154,7 @@ ${truncatedText}`
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1024,
+          temperature: 0,
           messages: [{ role: 'user', content: prompt }]
         })
       })
@@ -169,6 +171,20 @@ ${truncatedText}`
         parsed = JSON.parse(jsonMatch[0])
       } catch {
         throw new Error('El JSON extraído del extracto no es válido')
+      }
+
+      // Pre-extracción con regex para campos que la IA puede omitir
+      const parseAmount = (str) => {
+        if (!str) return null
+        return Number(str.replace(/\./g, '').replace(',', '.'))
+      }
+
+      const moraMatch = text.match(/[Ii]ntereses\s+de\s+mora\s*\$?([\d.,]+)/i)
+      if (moraMatch && (!parsed.overdue_balance || parsed.overdue_balance === 0)) {
+        const moraAmount = parseAmount(moraMatch[1])
+        if (moraAmount && moraAmount > 0) {
+          parsed.overdue_balance = moraAmount
+        }
       }
 
       return res.status(200).json(parsed)
