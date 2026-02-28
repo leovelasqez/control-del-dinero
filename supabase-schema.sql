@@ -126,3 +126,49 @@ create policy "Users can insert own debt_payments"
   on public.debt_payments for insert with check (auth.uid() = user_id);
 create policy "Users can delete own debt_payments"
   on public.debt_payments for delete using (auth.uid() = user_id);
+
+-- ============================================
+-- EXTENSIONES PARA EXTRACTOS BANCARIOS
+-- Ejecutar después de las tablas base
+-- ============================================
+
+-- Columnas adicionales en debts para datos de extractos
+alter table public.debts add column if not exists bank_name text;
+alter table public.debts add column if not exists card_last_four text;
+alter table public.debts add column if not exists annual_interest_rate numeric(5,2);
+alter table public.debts add column if not exists payment_deadline date;
+alter table public.debts add column if not exists period_interest numeric(15,2) default 0;
+alter table public.debts add column if not exists overdue_balance numeric(15,2) default 0;
+alter table public.debts add column if not exists cash_advances numeric(15,2) default 0;
+alter table public.debts add column if not exists source text default 'manual';
+
+-- 6. HISTORIAL DE EXTRACCIONES DE EXTRACTOS
+create table public.statement_extractions (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  debt_id uuid references public.debts(id) on delete set null,
+  file_name text,
+  bank_name text,
+  card_last_four text,
+  total_owed numeric(15,2),
+  minimum_payment numeric(15,2),
+  payment_deadline date,
+  monthly_interest_rate numeric(5,2),
+  annual_interest_rate numeric(5,2),
+  period_interest numeric(15,2),
+  overdue_balance numeric(15,2),
+  cash_advances numeric(15,2),
+  raw_extraction jsonb,
+  created_at timestamptz default now() not null
+);
+
+create index idx_statement_extractions_user on public.statement_extractions(user_id);
+
+alter table public.statement_extractions enable row level security;
+
+create policy "Users can view own statement_extractions"
+  on public.statement_extractions for select using (auth.uid() = user_id);
+create policy "Users can insert own statement_extractions"
+  on public.statement_extractions for insert with check (auth.uid() = user_id);
+create policy "Users can delete own statement_extractions"
+  on public.statement_extractions for delete using (auth.uid() = user_id);

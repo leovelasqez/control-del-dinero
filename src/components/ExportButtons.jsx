@@ -53,6 +53,10 @@ export default function ExportButtons({ transactions, budgets, goals, debts }) {
 
   const exportPDF = () => {
     const printWindow = window.open('', '_blank')
+    if (!printWindow) {
+      alert('El navegador bloqueó la ventana emergente. Permite las ventanas emergentes para este sitio.')
+      return
+    }
     const html = `
       <!DOCTYPE html>
       <html><head><title>Control del Dinero - Reporte</title>

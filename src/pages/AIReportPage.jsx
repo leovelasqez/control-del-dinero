@@ -74,7 +74,19 @@ export default function AIReportPage({ transactions, budgets, goals, debts }) {
       {report && (
         <div className="card">
           <div className="card-title">Reporte de {MONTHS[month - 1]} {year}</div>
-          <div className="report-content">{report}</div>
+          <div className="report-content" dangerouslySetInnerHTML={{ __html: report
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+            .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+            .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+            .replace(/^- (.+)$/gm, '<li>$1</li>')
+            .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+            .replace(/<\/ul>\s*<ul>/g, '')
+            .replace(/\n{2,}/g, '<br/><br/>')
+            .replace(/\n/g, '<br/>')
+          }} />
         </div>
       )}
 

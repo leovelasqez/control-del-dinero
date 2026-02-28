@@ -38,9 +38,9 @@ export default function App() {
   const [showScanModal, setShowScanModal] = useState(false)
 
   const { transactions, loading: txLoading, addTransaction, updateTransaction, deleteTransaction } = useTransactions()
-  const { budgets, upsertBudget, updateBudget, deleteBudget } = useBudgets()
-  const { goals, addGoal, addToGoal, updateGoal, deleteGoal } = useSavingsGoals()
-  const { debts, addDebt, payDebt, updateDebt, deleteDebt } = useDebts()
+  const { budgets, loading: budgetsLoading, upsertBudget, updateBudget, deleteBudget } = useBudgets()
+  const { goals, loading: goalsLoading, addGoal, addToGoal, updateGoal, deleteGoal } = useSavingsGoals()
+  const { debts, loading: debtsLoading, addDebt, payDebt, updateDebt, deleteDebt } = useDebts()
 
   if (authLoading) {
     return (
@@ -66,7 +66,12 @@ export default function App() {
         <div className="user-info">
           <ExportButtons transactions={transactions} budgets={budgets} goals={goals} debts={debts} />
           {user.user_metadata?.avatar_url && (
-            <img src={user.user_metadata.avatar_url} alt="" />
+            <img
+              src={user.user_metadata.avatar_url}
+              alt=""
+              referrerPolicy="no-referrer"
+              onError={e => { e.target.style.display = 'none' }}
+            />
           )}
           <span className="text-sm">{user.user_metadata?.full_name || user.email}</span>
           <button className="btn btn-ghost btn-sm" onClick={signOut}>
@@ -110,7 +115,7 @@ export default function App() {
             <ExpensePieChart transactions={transactions} />
           </div>
 
-          <TransactionTable transactions={transactions} onDelete={deleteTransaction} onUpdate={updateTransaction} />
+          <TransactionTable transactions={transactions} onDelete={deleteTransaction} onUpdate={updateTransaction} loading={txLoading} />
         </div>
       )}
 
@@ -118,6 +123,7 @@ export default function App() {
         <BudgetsPage
           budgets={budgets}
           transactions={transactions}
+          loading={budgetsLoading}
           onUpsert={upsertBudget}
           onUpdate={updateBudget}
           onDelete={deleteBudget}
@@ -127,6 +133,7 @@ export default function App() {
       {activeTab === 'goals' && (
         <GoalsPage
           goals={goals}
+          loading={goalsLoading}
           onAdd={addGoal}
           onAddToGoal={addToGoal}
           onUpdate={updateGoal}
@@ -137,6 +144,7 @@ export default function App() {
       {activeTab === 'debts' && (
         <DebtsPage
           debts={debts}
+          loading={debtsLoading}
           onAdd={addDebt}
           onPay={payDebt}
           onUpdate={updateDebt}

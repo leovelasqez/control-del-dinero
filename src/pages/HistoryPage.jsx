@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Cell } from 'recharts'
 import { MONTHS, EXPENSE_CATEGORIES, CATEGORY_COLORS, formatCOP } from '../lib/constants'
 
 export default function HistoryPage({ transactions }) {
@@ -23,6 +23,7 @@ export default function HistoryPage({ transactions }) {
       .sort((a, b) => a.month.localeCompare(b.month))
       .map(item => ({
         ...item,
+        ...item.categories,
         ahorro: item.ingresos - item.gastos,
         label: MONTHS[parseInt(item.month.split('-')[1]) - 1]?.slice(0, 3) + ' ' + item.month.split('-')[0].slice(2),
         pctAhorro: item.ingresos > 0 ? ((item.ingresos - item.gastos) / item.ingresos * 100).toFixed(1) : 0
@@ -74,7 +75,7 @@ export default function HistoryPage({ transactions }) {
               <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }} formatter={v => formatCOP(v)} />
               <Bar dataKey="ahorro" radius={[4, 4, 0, 0]}>
                 {monthlyData.map((entry, i) => (
-                  <rect key={i} fill={entry.ahorro >= 0 ? '#22c55e' : '#ef4444'} />
+                  <Cell key={i} fill={entry.ahorro >= 0 ? '#22c55e' : '#ef4444'} />
                 ))}
               </Bar>
             </BarChart>
@@ -86,7 +87,7 @@ export default function HistoryPage({ transactions }) {
               <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }} formatter={v => formatCOP(v)} />
               <Legend />
               {EXPENSE_CATEGORIES.map(cat => (
-                <Bar key={cat} dataKey={`categories.${cat}`} name={cat} stackId="a" fill={CATEGORY_COLORS[cat] || '#6b7280'} />
+                <Bar key={cat} dataKey={cat} name={cat} stackId="a" fill={CATEGORY_COLORS[cat] || '#6b7280'} />
               ))}
             </BarChart>
           )}

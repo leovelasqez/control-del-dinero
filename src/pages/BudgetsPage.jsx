@@ -1,13 +1,15 @@
 import { useState, useMemo } from 'react'
 import { Plus, Trash2, Pencil, X } from 'lucide-react'
 import { EXPENSE_CATEGORIES, formatCOP } from '../lib/constants'
+import ConfirmDialog from '../components/ConfirmDialog'
 
-export default function BudgetsPage({ budgets, transactions, onUpsert, onUpdate, onDelete }) {
+export default function BudgetsPage({ budgets, transactions, loading, onUpsert, onUpdate, onDelete }) {
   const [showForm, setShowForm] = useState(false)
   const [category, setCategory] = useState(EXPENSE_CATEGORIES[0])
   const [limit, setLimit] = useState('')
   const [editing, setEditing] = useState(null)
   const [editLimit, setEditLimit] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   const now = new Date()
   const currentMonth = now.getMonth()
@@ -62,7 +64,11 @@ export default function BudgetsPage({ budgets, transactions, onUpsert, onUpdate,
         </button>
       </div>
 
-      {budgets.length === 0 && !showForm && (
+      {loading && (
+        <div style={{ padding: 40, textAlign: 'center' }}><div className="spinner" /></div>
+      )}
+
+      {!loading && budgets.length === 0 && !showForm && (
         <div className="card text-center" style={{ padding: 40 }}>
           <p className="text-muted">No tienes presupuestos definidos.</p>
           <p className="text-muted text-sm mt-2">Define limites mensuales por categoria para controlar tus gastos.</p>
@@ -112,7 +118,7 @@ export default function BudgetsPage({ budgets, transactions, onUpsert, onUpdate,
                   <button className="btn btn-ghost btn-sm" onClick={() => handleEdit(b)} title="Editar">
                     <Pencil size={14} />
                   </button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => onDelete(b.id)} title="Eliminar">
+                  <button className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(b)} title="Eliminar">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -162,6 +168,14 @@ export default function BudgetsPage({ budgets, transactions, onUpsert, onUpdate,
             <button className="btn btn-primary w-full mt-2" onClick={handleSaveEdit}>Guardar cambios</button>
           </div>
         </div>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          message={`¿Eliminar el presupuesto de "${confirmDelete.category}"?`}
+          onConfirm={() => { onDelete(confirmDelete.id); setConfirmDelete(null) }}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   )

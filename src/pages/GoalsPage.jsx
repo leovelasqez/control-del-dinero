@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { Plus, Trash2, Target, Pencil, X } from 'lucide-react'
 import { formatCOP } from '../lib/constants'
+import ConfirmDialog from '../components/ConfirmDialog'
 
-export default function GoalsPage({ goals, onAdd, onAddToGoal, onUpdate, onDelete }) {
+export default function GoalsPage({ goals, loading, onAdd, onAddToGoal, onUpdate, onDelete }) {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ name: '', target_amount: '', current_amount: '0', deadline: '' })
   const [editing, setEditing] = useState(null)
   const [editForm, setEditForm] = useState({ name: '', target_amount: '', current_amount: '', deadline: '' })
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -82,7 +84,11 @@ export default function GoalsPage({ goals, onAdd, onAddToGoal, onUpdate, onDelet
         </div>
       )}
 
-      {goals.length === 0 && !showForm && (
+      {loading && (
+        <div style={{ padding: 40, textAlign: 'center' }}><div className="spinner" /></div>
+      )}
+
+      {!loading && goals.length === 0 && !showForm && (
         <div className="card text-center" style={{ padding: 40 }}>
           <Target size={40} style={{ color: 'var(--text-muted)', margin: '0 auto 12px' }} />
           <p className="text-muted">No tienes metas de ahorro.</p>
@@ -118,7 +124,7 @@ export default function GoalsPage({ goals, onAdd, onAddToGoal, onUpdate, onDelet
                   <button className="btn btn-ghost btn-sm" onClick={() => handleEdit(g)} title="Editar">
                     <Pencil size={14} />
                   </button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => onDelete(g.id)} title="Eliminar">
+                  <button className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(g)} title="Eliminar">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -179,6 +185,14 @@ export default function GoalsPage({ goals, onAdd, onAddToGoal, onUpdate, onDelet
             <button className="btn btn-primary w-full mt-2" onClick={handleSaveEdit}>Guardar cambios</button>
           </div>
         </div>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          message={`¿Eliminar la meta "${confirmDelete.name}"?`}
+          onConfirm={() => { onDelete(confirmDelete.id); setConfirmDelete(null) }}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   )

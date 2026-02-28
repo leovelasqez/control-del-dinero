@@ -29,14 +29,29 @@ export function useDebts() {
     fetchDebts()
   }, [fetchDebts])
 
-  const addDebt = async (debt) => {
+  const addDebt = async (debt, rawExtraction, fileName) => {
+    const insertData = {
+      user_id: user.id,
+      name: debt.name,
+      original_amount: debt.original_amount,
+      current_balance: debt.current_balance ?? debt.original_amount,
+      minimum_payment: debt.minimum_payment || 0,
+      interest_rate: debt.interest_rate || 0
+    }
+
+    // Campos opcionales de extracto
+    if (debt.bank_name) insertData.bank_name = debt.bank_name
+    if (debt.card_last_four) insertData.card_last_four = debt.card_last_four
+    if (debt.annual_interest_rate) insertData.annual_interest_rate = debt.annual_interest_rate
+    if (debt.payment_deadline) insertData.payment_deadline = debt.payment_deadline
+    if (debt.period_interest) insertData.period_interest = debt.period_interest
+    if (debt.overdue_balance) insertData.overdue_balance = debt.overdue_balance
+    if (debt.cash_advances) insertData.cash_advances = debt.cash_advances
+    if (debt.source) insertData.source = debt.source
+
     const { data, error } = await supabase
       .from('debts')
-      .insert({
-        ...debt,
-        user_id: user.id,
-        current_balance: debt.original_amount
-      })
+      .insert(insertData)
       .select('*, debt_payments(id, amount, paid_at)')
       .single()
 
@@ -45,6 +60,29 @@ export function useDebts() {
       console.error(error)
       return null
     }
+
+    // Guardar historial de extracción (no bloqueante)
+    if (rawExtraction) {
+      supabase.from('statement_extractions').insert({
+        user_id: user.id,
+        debt_id: data.id,
+        file_name: fileName || null,
+        bank_name: rawExtraction.bank_name,
+        card_last_four: rawExtraction.card_last_four,
+        total_owed: rawExtraction.total_owed,
+        minimum_payment: rawExtraction.minimum_payment,
+        payment_deadline: rawExtraction.payment_deadline,
+        monthly_interest_rate: rawExtraction.monthly_interest_rate,
+        annual_interest_rate: rawExtraction.annual_interest_rate,
+        period_interest: rawExtraction.period_interest,
+        overdue_balance: rawExtraction.overdue_balance,
+        cash_advances: rawExtraction.cash_advances,
+        raw_extraction: rawExtraction
+      }).then(({ error: extError }) => {
+        if (extError) console.error('Error guardando historial de extracción:', extError)
+      })
+    }
+
     setDebts(prev => [data, ...prev])
     toast.success('Deuda registrada')
     return data

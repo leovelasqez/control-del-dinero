@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { Plus, Trash2, CreditCard, Pencil, X } from 'lucide-react'
+import { Plus, Trash2, CreditCard, Pencil, X, FileUp } from 'lucide-react'
 import { formatCOP } from '../lib/constants'
+import ConfirmDialog from '../components/ConfirmDialog'
+import UploadStatementModal from '../components/UploadStatementModal'
 import toast from 'react-hot-toast'
 
-export default function DebtsPage({ debts, onAdd, onPay, onUpdate, onDelete, onAddTransaction }) {
+export default function DebtsPage({ debts, loading, onAdd, onPay, onUpdate, onDelete, onAddTransaction }) {
   const [showForm, setShowForm] = useState(false)
   const [payingDebt, setPayingDebt] = useState(null)
   const [payAmount, setPayAmount] = useState('')
@@ -14,6 +16,8 @@ export default function DebtsPage({ debts, onAdd, onPay, onUpdate, onDelete, onA
   const [editForm, setEditForm] = useState({
     name: '', minimum_payment: '', interest_rate: ''
   })
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [showStatement, setShowStatement] = useState(false)
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -48,7 +52,8 @@ export default function DebtsPage({ debts, onAdd, onPay, onUpdate, onDelete, onA
   }
 
   const handlePay = async (debtId, debtName) => {
-    const amount = Number(payAmount)
+    const debt = debts.find(d => d.id === debtId)
+    const amount = Math.min(Number(payAmount), Number(debt?.current_balance || 0))
     if (!amount || amount <= 0) return
     try {
       const result = await onPay(debtId, amount)
@@ -89,9 +94,14 @@ export default function DebtsPage({ debts, onAdd, onPay, onUpdate, onDelete, onA
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2>Deudas</h2>
-        <button className="btn btn-primary btn-sm" onClick={() => setShowForm(true)}>
-          <Plus size={14} /> Nueva deuda
-        </button>
+        <div className="flex gap-2">
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowStatement(true)}>
+            <FileUp size={14} /> Subir extracto
+          </button>
+          <button className="btn btn-primary btn-sm" onClick={() => setShowForm(true)}>
+            <Plus size={14} /> Nueva deuda
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -123,7 +133,11 @@ export default function DebtsPage({ debts, onAdd, onPay, onUpdate, onDelete, onA
         </div>
       )}
 
-      {debts.length === 0 && !showForm && (
+      {loading && (
+        <div style={{ padding: 40, textAlign: 'center' }}><div className="spinner" /></div>
+      )}
+
+      {!loading && debts.length === 0 && !showForm && (
         <div className="card text-center" style={{ padding: 40 }}>
           <CreditCard size={40} style={{ color: 'var(--text-muted)', margin: '0 auto 12px' }} />
           <p className="text-muted">No tienes deudas registradas.</p>
@@ -146,12 +160,17 @@ export default function DebtsPage({ debts, onAdd, onPay, onUpdate, onDelete, onA
           return (
             <div key={d.id} className="card">
               <div className="flex justify-between items-center mb-4">
-                <div style={{ fontWeight: 600 }}>{d.name}</div>
+                <div>
+                  <div style={{ fontWeight: 600 }}>{d.name}</div>
+                  {d.source === 'statement' && (
+                    <span className="text-xs" style={{ background: 'rgba(99,102,241,0.2)', color: '#818cf8', padding: '2px 8px', borderRadius: 9999, display: 'inline-block', marginTop: 4 }}>Extracto</span>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <button className="btn btn-ghost btn-sm" onClick={() => handleEdit(d)} title="Editar">
                     <Pencil size={14} />
                   </button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => onDelete(d.id)} title="Eliminar">
+                  <button className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(d)} title="Eliminar">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -180,6 +199,30 @@ export default function DebtsPage({ debts, onAdd, onPay, onUpdate, onDelete, onA
                   <div className="flex justify-between">
                     <span className="text-muted">Intereses totales:</span>
                     <span className="text-red">{formatCOP(totalInterest)}</span>
+                  </div>
+                )}
+                {d.bank_name && (
+                  <div className="flex justify-between">
+                    <span className="text-muted">Banco:</span>
+                    <span>{d.bank_name}{d.card_last_four ? ` *${d.card_last_four}` : ''}</span>
+                  </div>
+                )}
+                {d.annual_interest_rate > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted">Tasa EA:</span>
+                    <span>{d.annual_interest_rate}%</span>
+                  </div>
+                )}
+                {d.payment_deadline && (
+                  <div className="flex justify-between">
+                    <span className="text-muted">Fecha limite:</span>
+                    <span>{new Date(d.payment_deadline + 'T00:00:00').toLocaleDateString('es-CO')}</span>
+                  </div>
+                )}
+                {Number(d.overdue_balance) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted">Saldo en mora:</span>
+                    <span className="text-red">{formatCOP(Number(d.overdue_balance))}</span>
                   </div>
                 )}
               </div>
@@ -239,6 +282,21 @@ export default function DebtsPage({ debts, onAdd, onPay, onUpdate, onDelete, onA
             <button className="btn btn-primary w-full mt-2" onClick={handleSaveEdit}>Guardar cambios</button>
           </div>
         </div>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          message={`¿Eliminar la deuda "${confirmDelete.name}"?`}
+          onConfirm={() => { onDelete(confirmDelete.id); setConfirmDelete(null) }}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {showStatement && (
+        <UploadStatementModal
+          onClose={() => setShowStatement(false)}
+          onAdd={onAdd}
+        />
       )}
     </div>
   )

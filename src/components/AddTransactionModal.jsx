@@ -13,17 +13,24 @@ export default function AddTransactionModal({ onClose, onAdd }) {
 
   const categories = form.type === 'gasto' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES
 
-  const handleSubmit = (e) => {
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.amount || Number(form.amount) <= 0) return
-    onAdd({
+    if (!form.amount || Number(form.amount) <= 0 || submitting) return
+    setSubmitting(true)
+    const result = await onAdd({
       date: form.date,
       type: form.type,
       category: form.category,
       description: form.description,
       amount: Number(form.amount)
     })
-    onClose()
+    if (result) {
+      onClose()
+    } else {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -87,8 +94,8 @@ export default function AddTransactionModal({ onClose, onAdd }) {
               required
             />
           </div>
-          <button type="submit" className="btn btn-primary w-full mt-2">
-            Agregar
+          <button type="submit" className="btn btn-primary w-full mt-2" disabled={submitting}>
+            {submitting ? 'Guardando...' : 'Agregar'}
           </button>
         </form>
       </div>

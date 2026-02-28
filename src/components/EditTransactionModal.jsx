@@ -13,17 +13,24 @@ export default function EditTransactionModal({ transaction, onClose, onSave }) {
 
   const categories = form.type === 'gasto' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES
 
-  const handleSubmit = (e) => {
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.amount || Number(form.amount) <= 0) return
-    onSave(transaction.id, {
+    if (!form.amount || Number(form.amount) <= 0 || submitting) return
+    setSubmitting(true)
+    const result = await onSave(transaction.id, {
       date: form.date,
       type: form.type,
       category: form.category,
       description: form.description,
       amount: Number(form.amount)
     })
-    onClose()
+    if (result) {
+      onClose()
+    } else {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -93,8 +100,8 @@ export default function EditTransactionModal({ transaction, onClose, onSave }) {
               required
             />
           </div>
-          <button type="submit" className="btn btn-primary w-full mt-2">
-            Guardar cambios
+          <button type="submit" className="btn btn-primary w-full mt-2" disabled={submitting}>
+            {submitting ? 'Guardando...' : 'Guardar cambios'}
           </button>
         </form>
       </div>

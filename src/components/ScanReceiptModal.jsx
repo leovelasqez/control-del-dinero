@@ -27,6 +27,10 @@ export default function ScanReceiptModal({ onClose, onAdd }) {
     setScanning(true)
     try {
       const reader = new FileReader()
+      reader.onerror = () => {
+        toast.error('Error al leer el archivo')
+        setScanning(false)
+      }
       reader.onload = async () => {
         const base64 = reader.result.split(',')[1]
         try {
