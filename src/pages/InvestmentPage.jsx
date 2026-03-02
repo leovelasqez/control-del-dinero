@@ -1,8 +1,11 @@
 import { useState, useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from 'recharts'
 import { formatCOP } from '../lib/constants'
+import { useTheme } from '../hooks/useTheme'
 
 export default function InvestmentPage() {
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
   const [params, setParams] = useState({
     capital: 1000000,
     rate: 1,
@@ -98,7 +101,7 @@ export default function InvestmentPage() {
           <div className="card-title">Resultado</div>
           <div style={{ marginBottom: 20 }}>
             <div className="text-muted text-sm">Valor final</div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#22c55e' }}>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--green)' }}>
               {formatCOP(result.finalValue)}
             </div>
           </div>
@@ -109,7 +112,7 @@ export default function InvestmentPage() {
             </div>
             <div>
               <div className="text-muted text-xs">Intereses ganados</div>
-              <div style={{ fontWeight: 600, color: '#22c55e' }}>{formatCOP(result.totalInterest)}</div>
+              <div style={{ fontWeight: 600, color: 'var(--green)' }}>{formatCOP(result.totalInterest)}</div>
             </div>
           </div>
 
@@ -129,10 +132,10 @@ export default function InvestmentPage() {
         <div className="card-title">Crecimiento proyectado</div>
         <ResponsiveContainer width="100%" height={300}>
           <AreaChart data={result.data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-            <XAxis dataKey="mes" stroke="#94a3b8" fontSize={12} label={{ value: 'Meses', position: 'insideBottom', offset: -5 }} />
-            <YAxis stroke="#94a3b8" fontSize={12} tickFormatter={v => `$${(v/1000000).toFixed(1)}M`} />
-            <Tooltip contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }} formatter={v => formatCOP(v)} />
+            <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#334155' : '#e2e8f0'} />
+            <XAxis dataKey="mes" stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={12} label={{ value: 'Meses', position: 'insideBottom', offset: -5 }} />
+            <YAxis stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={12} tickFormatter={v => `$${(v/1000000).toFixed(1)}M`} />
+            <Tooltip contentStyle={{ background: isDark ? '#1e293b' : '#ffffff', border: `1px solid ${isDark ? '#334155' : '#cbd5e1'}`, borderRadius: 8 }} formatter={v => formatCOP(v)} />
             <Area type="monotone" dataKey="valor" stroke="#22c55e" fill="#22c55e" fillOpacity={0.1} strokeWidth={2} name="Valor total" />
             <Area type="monotone" dataKey="intereses" stroke="#6366f1" fill="#6366f1" fillOpacity={0.1} strokeWidth={2} name="Intereses" />
           </AreaChart>

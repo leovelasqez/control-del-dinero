@@ -2,11 +2,11 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../lib/constants'
 
-export default function AddTransactionModal({ onClose, onAdd }) {
+export default function AddTransactionModal({ onClose, onAdd, initialType = 'gasto' }) {
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
-    type: 'gasto',
-    category: 'Comida',
+    type: initialType,
+    category: initialType === 'ingreso' ? 'Salario' : 'Comida',
     description: '',
     amount: ''
   })
@@ -37,7 +37,7 @@ export default function AddTransactionModal({ onClose, onAdd }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
-          <h2>Agregar Transaccion</h2>
+          <h2>{form.type === 'ingreso' ? 'Agregar Ingreso' : 'Agregar Gasto'}</h2>
           <button className="btn btn-ghost btn-sm" onClick={onClose}><X size={18} /></button>
         </div>
         <form onSubmit={handleSubmit}>
@@ -50,17 +50,6 @@ export default function AddTransactionModal({ onClose, onAdd }) {
               onChange={e => setForm({ ...form, date: e.target.value })}
               required
             />
-          </div>
-          <div className="form-group">
-            <label>Tipo</label>
-            <select
-              className="form-input"
-              value={form.type}
-              onChange={e => setForm({ ...form, type: e.target.value, category: e.target.value === 'gasto' ? 'Comida' : 'Salario' })}
-            >
-              <option value="gasto">Gasto</option>
-              <option value="ingreso">Ingreso</option>
-            </select>
           </div>
           <div className="form-group">
             <label>Categoria</label>
@@ -94,7 +83,7 @@ export default function AddTransactionModal({ onClose, onAdd }) {
               required
             />
           </div>
-          <button type="submit" className="btn btn-primary w-full mt-2" disabled={submitting}>
+          <button type="submit" className={`btn ${form.type === 'ingreso' ? 'btn-success' : 'btn-danger'} w-full mt-2`} disabled={submitting}>
             {submitting ? 'Guardando...' : 'Agregar'}
           </button>
         </form>

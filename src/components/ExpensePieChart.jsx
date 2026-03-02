@@ -1,8 +1,11 @@
 import { useMemo } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { CATEGORY_COLORS, formatCOP } from '../lib/constants'
+import { useTheme } from '../hooks/useTheme'
 
 export default function ExpensePieChart({ transactions }) {
+  const { theme } = useTheme()
+  const isDark = theme === 'dark'
   const data = useMemo(() => {
     const byCategory = {}
     transactions
@@ -33,7 +36,7 @@ export default function ExpensePieChart({ transactions }) {
             ))}
           </Pie>
           <Tooltip
-            contentStyle={{ background: '#1e293b', border: '1px solid #334155', borderRadius: 8 }}
+            contentStyle={{ background: isDark ? '#1e293b' : '#ffffff', border: `1px solid ${isDark ? '#334155' : '#cbd5e1'}`, borderRadius: 8 }}
             formatter={(value) => [formatCOP(value)]}
           />
         </PieChart>

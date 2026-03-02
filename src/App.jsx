@@ -19,22 +19,24 @@ import DebtsPage from './pages/DebtsPage'
 import HistoryPage from './pages/HistoryPage'
 import InvestmentPage from './pages/InvestmentPage'
 import AIReportPage from './pages/AIReportPage'
-import { LogOut, Plus, Camera } from 'lucide-react'
+import { useTheme } from './hooks/useTheme'
+import { LogOut, Plus, Camera, LayoutDashboard, Wallet, Target, CreditCard, BarChart3, TrendingUp, Bot, Sun, Moon } from 'lucide-react'
 
 const TABS = [
-  { key: 'dashboard', label: 'Dashboard' },
-  { key: 'budgets', label: 'Presupuestos' },
-  { key: 'goals', label: 'Metas' },
-  { key: 'debts', label: 'Deudas' },
-  { key: 'history', label: 'Historial' },
-  { key: 'investment', label: 'Inversion' },
-  { key: 'report', label: 'Reporte IA' }
+  { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { key: 'budgets', label: 'Presupuestos', icon: Wallet },
+  { key: 'goals', label: 'Metas', icon: Target },
+  { key: 'debts', label: 'Deudas', icon: CreditCard },
+  { key: 'history', label: 'Historial', icon: BarChart3 },
+  { key: 'investment', label: 'Inversion', icon: TrendingUp },
+  { key: 'report', label: 'Reporte IA', icon: Bot }
 ]
 
 export default function App() {
   const { user, loading: authLoading, signOut } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const [activeTab, setActiveTab] = useState('dashboard')
-  const [showAddModal, setShowAddModal] = useState(false)
+  const [addModalType, setAddModalType] = useState(null)
   const [showScanModal, setShowScanModal] = useState(false)
 
   const { transactions, loading: txLoading, addTransaction, updateTransaction, deleteTransaction } = useTransactions()
@@ -57,24 +59,31 @@ export default function App() {
   return (
     <div className="app-container">
       <Toaster position="top-right" toastOptions={{
-        style: { background: '#1e293b', color: '#f1f5f9', border: '1px solid #334155' }
+        style: { background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1px solid var(--border)' }
       }} />
 
       {/* Header */}
       <header className="app-header">
-        <h1>Control del Dinero</h1>
+        <div className="header-left">
+          <h1>Control del Dinero</h1>
+        </div>
         <div className="user-info">
           <ExportButtons transactions={transactions} budgets={budgets} goals={goals} debts={debts} />
-          {user.user_metadata?.avatar_url && (
-            <img
-              src={user.user_metadata.avatar_url}
-              alt=""
-              referrerPolicy="no-referrer"
-              onError={e => { e.target.style.display = 'none' }}
-            />
-          )}
-          <span className="text-sm">{user.user_metadata?.full_name || user.email}</span>
-          <button className="btn btn-ghost btn-sm" onClick={signOut}>
+          <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+          <div className="user-pill">
+            {user.user_metadata?.avatar_url && (
+              <img
+                src={user.user_metadata.avatar_url}
+                alt=""
+                referrerPolicy="no-referrer"
+                onError={e => { e.target.style.display = 'none' }}
+              />
+            )}
+            <span>{user.user_metadata?.full_name?.split(' ')[0] || user.email}</span>
+          </div>
+          <button className="btn btn-ghost btn-sm" onClick={signOut} title="Cerrar sesion">
             <LogOut size={14} />
           </button>
         </div>
@@ -82,33 +91,43 @@ export default function App() {
 
       {/* Navigation */}
       <nav className="nav-tabs">
-        {TABS.map(tab => (
-          <button
-            key={tab.key}
-            className={`nav-tab ${activeTab === tab.key ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.key)}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {TABS.map(tab => {
+          const Icon = tab.icon
+          return (
+            <button
+              key={tab.key}
+              className={`nav-tab ${activeTab === tab.key ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.key)}
+            >
+              <Icon size={15} />
+              <span>{tab.label}</span>
+            </button>
+          )
+        })}
       </nav>
 
       {/* Content */}
       {activeTab === 'dashboard' && (
         <div>
-          <KPICards transactions={transactions} debts={debts} />
-
-          <div className="flex justify-between items-center mb-4">
-            <div />
-            <div className="flex gap-2">
-              <button className="btn btn-primary btn-sm" onClick={() => setShowAddModal(true)}>
-                <Plus size={14} /> Agregar registro
+          <div className="welcome-bar">
+            <div className="welcome-text">
+              <span className="welcome-greeting">Hola, {user.user_metadata?.full_name?.split(' ')[0] || 'usuario'}</span>
+              <span className="welcome-date">{new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+            </div>
+            <div className="welcome-actions">
+              <button className="btn btn-success btn-sm" onClick={() => setAddModalType('ingreso')}>
+                <Plus size={14} /> Agregar ingreso
+              </button>
+              <button className="btn btn-danger btn-sm" onClick={() => setAddModalType('gasto')}>
+                <Plus size={14} /> Agregar gasto
               </button>
               <button className="btn btn-ghost btn-sm" onClick={() => setShowScanModal(true)}>
-                <Camera size={14} /> Escanea tu factura
+                <Camera size={14} /> Escanear factura
               </button>
             </div>
           </div>
+
+          <KPICards transactions={transactions} debts={debts} />
 
           <div className="grid-charts">
             <MonthlyChart transactions={transactions} />
@@ -171,9 +190,10 @@ export default function App() {
       )}
 
       {/* Modals */}
-      {showAddModal && (
+      {addModalType && (
         <AddTransactionModal
-          onClose={() => setShowAddModal(false)}
+          initialType={addModalType}
+          onClose={() => setAddModalType(null)}
           onAdd={addTransaction}
         />
       )}

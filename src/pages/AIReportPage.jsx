@@ -58,8 +58,8 @@ export default function AIReportPage({ transactions, budgets, goals, debts }) {
             <label>Año</label>
             <input type="number" className="form-input" value={year} onChange={e => setYear(Number(e.target.value))} min="2020" max="2030" />
           </div>
-          <button className="btn btn-primary" onClick={handleGenerate} disabled={loading}>
-            {loading ? <><Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> Generando...</> : <><Bot size={16} /> Generar Reporte</>}
+          <button className="btn btn-primary btn-sm" onClick={handleGenerate} disabled={loading}>
+            {loading ? <><Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Generando...</> : <><Bot size={14} /> Generar Reporte</>}
           </button>
         </div>
       </div>
