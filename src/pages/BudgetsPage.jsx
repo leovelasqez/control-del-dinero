@@ -1,33 +1,15 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { Plus, Trash2, Pencil, X } from 'lucide-react'
 import { EXPENSE_CATEGORIES, formatCOP } from '../lib/constants'
 import ConfirmDialog from '../components/ConfirmDialog'
 
-export default function BudgetsPage({ budgets, transactions, loading, onUpsert, onUpdate, onDelete }) {
+export default function BudgetsPage({ budgets, spentByCategory, loading, onUpsert, onUpdate, onDelete }) {
   const [showForm, setShowForm] = useState(false)
   const [category, setCategory] = useState(EXPENSE_CATEGORIES[0])
   const [limit, setLimit] = useState('')
   const [editing, setEditing] = useState(null)
   const [editLimit, setEditLimit] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(null)
-
-  const now = new Date()
-  const currentMonth = now.getMonth()
-  const currentYear = now.getFullYear()
-
-  const spentByCategory = useMemo(() => {
-    const spent = {}
-    transactions
-      .filter(t => {
-        if (t.type !== 'gasto') return false
-        const d = new Date(t.date)
-        return d.getMonth() === currentMonth && d.getFullYear() === currentYear
-      })
-      .forEach(t => {
-        spent[t.category] = (spent[t.category] || 0) + Number(t.amount)
-      })
-    return spent
-  }, [transactions, currentMonth, currentYear])
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -100,7 +82,7 @@ export default function BudgetsPage({ budgets, transactions, loading, onUpsert, 
 
       <div className="grid-2">
         {budgets.map(b => {
-          const spent = spentByCategory[b.category] || 0
+          const spent = (spentByCategory && spentByCategory[b.category]) || 0
           const limitVal = Number(b.monthly_limit)
           const pct = limitVal > 0 ? (spent / limitVal) * 100 : 0
           const remaining = limitVal - spent

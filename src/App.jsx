@@ -39,8 +39,16 @@ export default function App() {
   const [addModalType, setAddModalType] = useState(null)
   const [showScanModal, setShowScanModal] = useState(false)
 
-  const { transactions, loading: txLoading, addTransaction, updateTransaction, deleteTransaction } = useTransactions()
-  const { budgets, loading: budgetsLoading, upsertBudget, updateBudget, deleteBudget } = useBudgets()
+  const {
+    transactions, totalCount, page, setPage, pageSize,
+    filter, setFilter, search, setSearch,
+    loading: txLoading,
+    summary,
+    addTransaction, addMultipleTransactions, updateTransaction, deleteTransaction,
+    fetchAllForExport
+  } = useTransactions()
+
+  const { budgets, loading: budgetsLoading, spentByCategory, upsertBudget, updateBudget, deleteBudget } = useBudgets()
   const { goals, loading: goalsLoading, addGoal, addToGoal, updateGoal, deleteGoal } = useSavingsGoals()
   const { debts, loading: debtsLoading, addDebt, payDebt, updateDebt, deleteDebt } = useDebts()
 
@@ -68,7 +76,7 @@ export default function App() {
           <h1>Control del Dinero</h1>
         </div>
         <div className="user-info">
-          <ExportButtons transactions={transactions} budgets={budgets} goals={goals} debts={debts} />
+          <ExportButtons onExportData={fetchAllForExport} budgets={budgets} goals={goals} debts={debts} />
           <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
@@ -127,21 +135,34 @@ export default function App() {
             </div>
           </div>
 
-          <KPICards transactions={transactions} debts={debts} />
+          <KPICards summary={summary} debts={debts} />
 
           <div className="grid-charts">
-            <MonthlyChart transactions={transactions} />
-            <ExpensePieChart transactions={transactions} />
+            <MonthlyChart monthlyData={summary?.monthly_chart} />
+            <ExpensePieChart categoryData={summary?.expense_by_category} />
           </div>
 
-          <TransactionTable transactions={transactions} onDelete={deleteTransaction} onUpdate={updateTransaction} loading={txLoading} />
+          <TransactionTable
+            transactions={transactions}
+            totalCount={totalCount}
+            page={page}
+            setPage={setPage}
+            pageSize={pageSize}
+            filter={filter}
+            setFilter={setFilter}
+            search={search}
+            setSearch={setSearch}
+            onDelete={deleteTransaction}
+            onUpdate={updateTransaction}
+            loading={txLoading}
+          />
         </div>
       )}
 
       {activeTab === 'budgets' && (
         <BudgetsPage
           budgets={budgets}
-          transactions={transactions}
+          spentByCategory={spentByCategory}
           loading={budgetsLoading}
           onUpsert={upsertBudget}
           onUpdate={updateBudget}
@@ -173,7 +194,10 @@ export default function App() {
       )}
 
       {activeTab === 'history' && (
-        <HistoryPage transactions={transactions} />
+        <HistoryPage
+          monthlyData={summary?.history_monthly}
+          categoryData={summary?.history_categories}
+        />
       )}
 
       {activeTab === 'investment' && (
@@ -182,7 +206,6 @@ export default function App() {
 
       {activeTab === 'report' && (
         <AIReportPage
-          transactions={transactions}
           budgets={budgets}
           goals={goals}
           debts={debts}

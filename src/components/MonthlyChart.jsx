@@ -3,25 +3,19 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { MONTHS, formatCOP } from '../lib/constants'
 import { useTheme } from '../hooks/useTheme'
 
-export default function MonthlyChart({ transactions }) {
+export default function MonthlyChart({ monthlyData }) {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
+
   const data = useMemo(() => {
-    const byMonth = {}
-    transactions.forEach(t => {
-      const d = new Date(t.date)
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      if (!byMonth[key]) byMonth[key] = { month: key, ingresos: 0, gastos: 0 }
-      if (t.type === 'ingreso') byMonth[key].ingresos += Number(t.amount)
-      else byMonth[key].gastos += Number(t.amount)
-    })
-    return Object.values(byMonth)
-      .sort((a, b) => a.month.localeCompare(b.month))
-      .map(item => ({
-        ...item,
-        label: MONTHS[parseInt(item.month.split('-')[1]) - 1]?.slice(0, 3)
-      }))
-  }, [transactions])
+    if (!monthlyData) return []
+    return monthlyData.map(item => ({
+      ...item,
+      ingresos: Number(item.ingresos),
+      gastos: Number(item.gastos),
+      label: MONTHS[parseInt(item.month.split('-')[1]) - 1]?.slice(0, 3)
+    }))
+  }, [monthlyData])
 
   if (data.length === 0) {
     return (

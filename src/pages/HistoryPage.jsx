@@ -3,37 +3,40 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { MONTHS, EXPENSE_CATEGORIES, CATEGORY_COLORS, formatCOP } from '../lib/constants'
 import { useTheme } from '../hooks/useTheme'
 
-export default function HistoryPage({ transactions }) {
+export default function HistoryPage({ monthlyData, categoryData }) {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
   const [view, setView] = useState('income-vs-expense')
 
-  const monthlyData = useMemo(() => {
-    const byMonth = {}
-    transactions.forEach(t => {
-      const d = new Date(t.date)
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      if (!byMonth[key]) {
-        byMonth[key] = { month: key, ingresos: 0, gastos: 0, categories: {} }
-      }
-      if (t.type === 'ingreso') byMonth[key].ingresos += Number(t.amount)
-      else {
-        byMonth[key].gastos += Number(t.amount)
-        byMonth[key].categories[t.category] = (byMonth[key].categories[t.category] || 0) + Number(t.amount)
+  const chartData = useMemo(() => {
+    if (!monthlyData || monthlyData.length === 0) return []
+
+    // Build category lookup: { 'YYYY-MM': { Comida: 500, ... } }
+    const catByMonth = {}
+    if (categoryData) {
+      categoryData.forEach(r => {
+        if (!catByMonth[r.month]) catByMonth[r.month] = {}
+        catByMonth[r.month][r.category] = Number(r.total)
+      })
+    }
+
+    return monthlyData.map(item => {
+      const ingresos = Number(item.ingresos)
+      const gastos = Number(item.gastos)
+      const ahorro = ingresos - gastos
+      return {
+        month: item.month,
+        ingresos,
+        gastos,
+        ahorro,
+        label: MONTHS[parseInt(item.month.split('-')[1]) - 1]?.slice(0, 3) + ' ' + item.month.split('-')[0].slice(2),
+        pctAhorro: ingresos > 0 ? ((ahorro / ingresos) * 100).toFixed(1) : 0,
+        ...(catByMonth[item.month] || {})
       }
     })
-    return Object.values(byMonth)
-      .sort((a, b) => a.month.localeCompare(b.month))
-      .map(item => ({
-        ...item,
-        ...item.categories,
-        ahorro: item.ingresos - item.gastos,
-        label: MONTHS[parseInt(item.month.split('-')[1]) - 1]?.slice(0, 3) + ' ' + item.month.split('-')[0].slice(2),
-        pctAhorro: item.ingresos > 0 ? ((item.ingresos - item.gastos) / item.ingresos * 100).toFixed(1) : 0
-      }))
-  }, [transactions])
+  }, [monthlyData, categoryData])
 
-  if (transactions.length === 0) {
+  if (!monthlyData || monthlyData.length === 0) {
     return (
       <div className="card text-center" style={{ padding: 40 }}>
         <p className="text-muted">Agrega transacciones para ver el historial.</p>
@@ -61,7 +64,7 @@ export default function HistoryPage({ transactions }) {
       <div className="card mb-4">
         <ResponsiveContainer width="100%" height={300}>
           {view === 'income-vs-expense' ? (
-            <BarChart data={monthlyData}>
+            <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#334155' : '#e2e8f0'} />
               <XAxis dataKey="label" stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={12} />
               <YAxis stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={12} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
@@ -71,19 +74,19 @@ export default function HistoryPage({ transactions }) {
               <Bar dataKey="gastos" fill="#ef4444" radius={[4, 4, 0, 0]} />
             </BarChart>
           ) : view === 'savings' ? (
-            <BarChart data={monthlyData}>
+            <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#334155' : '#e2e8f0'} />
               <XAxis dataKey="label" stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={12} />
               <YAxis stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={12} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
               <Tooltip contentStyle={{ background: isDark ? '#1e293b' : '#ffffff', border: `1px solid ${isDark ? '#334155' : '#cbd5e1'}`, borderRadius: 8 }} formatter={v => formatCOP(v)} />
               <Bar dataKey="ahorro" radius={[4, 4, 0, 0]}>
-                {monthlyData.map((entry, i) => (
+                {chartData.map((entry, i) => (
                   <Cell key={i} fill={entry.ahorro >= 0 ? '#22c55e' : '#ef4444'} />
                 ))}
               </Bar>
             </BarChart>
           ) : (
-            <BarChart data={monthlyData}>
+            <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#334155' : '#e2e8f0'} />
               <XAxis dataKey="label" stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={12} />
               <YAxis stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={12} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
@@ -112,7 +115,7 @@ export default function HistoryPage({ transactions }) {
               </tr>
             </thead>
             <tbody>
-              {monthlyData.map(m => (
+              {chartData.map(m => (
                 <tr key={m.month}>
                   <td>{m.label}</td>
                   <td className="text-green">{formatCOP(m.ingresos)}</td>

@@ -7,6 +7,7 @@ export function useBudgets() {
   const { user } = useAuth()
   const [budgets, setBudgets] = useState([])
   const [loading, setLoading] = useState(true)
+  const [spentByCategory, setSpentByCategory] = useState({})
 
   const fetchBudgets = useCallback(async () => {
     if (!user) return
@@ -25,9 +26,16 @@ export function useBudgets() {
     setLoading(false)
   }, [user])
 
+  const fetchSpent = useCallback(async () => {
+    if (!user) return
+    const { data, error } = await supabase.rpc('get_current_month_spent', { p_user_id: user.id })
+    if (!error && data) setSpentByCategory(data)
+  }, [user])
+
   useEffect(() => {
     fetchBudgets()
-  }, [fetchBudgets])
+    fetchSpent()
+  }, [fetchBudgets, fetchSpent])
 
   const upsertBudget = async (category, monthlyLimit) => {
     const { data, error } = await supabase
@@ -87,5 +95,5 @@ export function useBudgets() {
     return true
   }
 
-  return { budgets, loading, upsertBudget, updateBudget, deleteBudget, refetch: fetchBudgets }
+  return { budgets, loading, spentByCategory, upsertBudget, updateBudget, deleteBudget, refetch: fetchBudgets, refetchSpent: fetchSpent }
 }

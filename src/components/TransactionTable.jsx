@@ -1,47 +1,18 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { Trash2, Pencil, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { formatCOP } from '../lib/constants'
 import EditTransactionModal from './EditTransactionModal'
 import ConfirmDialog from './ConfirmDialog'
 
-const PAGE_SIZE = 10
-
-export default function TransactionTable({ transactions, onDelete, onUpdate, loading }) {
-  const [filter, setFilter] = useState('todas')
-  const [search, setSearch] = useState('')
-  const [page, setPage] = useState(1)
+export default function TransactionTable({
+  transactions, totalCount, page, setPage, pageSize,
+  filter, setFilter, search, setSearch,
+  onDelete, onUpdate, loading
+}) {
   const [editing, setEditing] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
 
-  const filtered = useMemo(() => {
-    let result = transactions
-    if (filter !== 'todas') {
-      result = result.filter(t => t.type === (filter === 'ingresos' ? 'ingreso' : 'gasto'))
-    }
-    if (search.trim()) {
-      const q = search.toLowerCase()
-      result = result.filter(t =>
-        t.description.toLowerCase().includes(q) ||
-        t.category.toLowerCase().includes(q) ||
-        String(t.amount).includes(q)
-      )
-    }
-    return result
-  }, [transactions, filter, search])
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const safePage = Math.min(page, totalPages)
-  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
-
-  const handleFilterChange = (f) => {
-    setFilter(f)
-    setPage(1)
-  }
-
-  const handleSearchChange = (e) => {
-    setSearch(e.target.value)
-    setPage(1)
-  }
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
 
   const handleDelete = (id) => {
     onDelete(id)
@@ -60,7 +31,7 @@ export default function TransactionTable({ transactions, onDelete, onUpdate, loa
               className="form-input"
               placeholder="Buscar..."
               value={search}
-              onChange={handleSearchChange}
+              onChange={e => setSearch(e.target.value)}
               style={{ paddingLeft: 32, width: 180, marginBottom: 0 }}
             />
           </div>
@@ -69,7 +40,7 @@ export default function TransactionTable({ transactions, onDelete, onUpdate, loa
               <button
                 key={f}
                 className={`filter-tab ${filter === f ? 'active' : ''}`}
-                onClick={() => handleFilterChange(f)}
+                onClick={() => setFilter(f)}
               >
                 {f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
@@ -97,14 +68,14 @@ export default function TransactionTable({ transactions, onDelete, onUpdate, loa
                 </tr>
               </thead>
               <tbody>
-                {paginated.length === 0 ? (
+                {transactions.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="text-center text-muted" style={{ padding: 24 }}>
                       {search ? 'Sin resultados para la busqueda' : 'No hay transacciones'}
                     </td>
                   </tr>
                 ) : (
-                  paginated.map(t => (
+                  transactions.map(t => (
                     <tr key={t.id}>
                       <td>{new Date(t.date).toLocaleDateString('es-CO')}</td>
                       <td>
@@ -142,23 +113,23 @@ export default function TransactionTable({ transactions, onDelete, onUpdate, loa
             </table>
           </div>
 
-          {filtered.length > PAGE_SIZE && (
+          {totalCount > pageSize && (
             <div className="flex justify-between items-center mt-4">
               <span className="text-xs text-muted">
-                {filtered.length} transacciones — Pagina {safePage} de {totalPages}
+                {totalCount} transacciones — Pagina {page} de {totalPages}
               </span>
               <div className="flex gap-2">
                 <button
                   className="btn btn-ghost btn-sm"
                   onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={safePage <= 1}
+                  disabled={page <= 1}
                 >
                   <ChevronLeft size={14} />
                 </button>
                 <button
                   className="btn btn-ghost btn-sm"
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={safePage >= totalPages}
+                  disabled={page >= totalPages}
                 >
                   <ChevronRight size={14} />
                 </button>

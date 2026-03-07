@@ -3,18 +3,14 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { CATEGORY_COLORS, formatCOP } from '../lib/constants'
 import { useTheme } from '../hooks/useTheme'
 
-export default function ExpensePieChart({ transactions }) {
+export default function ExpensePieChart({ categoryData }) {
   const { theme } = useTheme()
   const isDark = theme === 'dark'
+
   const data = useMemo(() => {
-    const byCategory = {}
-    transactions
-      .filter(t => t.type === 'gasto')
-      .forEach(t => {
-        byCategory[t.category] = (byCategory[t.category] || 0) + Number(t.amount)
-      })
-    return Object.entries(byCategory).map(([name, value]) => ({ name, value }))
-  }, [transactions])
+    if (!categoryData) return []
+    return categoryData.map(c => ({ name: c.name, value: Number(c.value) }))
+  }, [categoryData])
 
   if (data.length === 0) {
     return (

@@ -28,7 +28,7 @@ function anthropicProxy(env) {
         req.on('data', chunk => { body += chunk })
         req.on('end', async () => {
           try {
-            const { action, image, mediaType, transactions, budgets, goals, debts, month, year, text, fileName } = JSON.parse(body)
+            const { action, image, mediaType, transactionSummary, budgets, goals, debts, month, year, text, fileName } = JSON.parse(body)
 
             if (action === 'scan-receipt') {
               const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -75,13 +75,32 @@ Solo responde con el JSON, sin texto adicional. La moneda es pesos colombianos (
             }
 
             if (action === 'monthly-report') {
+              const ts = transactionSummary || {}
               const prompt = `Eres un asesor financiero personal. Analiza los datos financieros del mes ${month}/${year} y genera un reporte personalizado.
 
-DATOS:
-- Transacciones del mes: ${JSON.stringify(transactions)}
-- Presupuestos: ${JSON.stringify(budgets)}
-- Metas de ahorro: ${JSON.stringify(goals)}
-- Deudas: ${JSON.stringify(debts)}
+RESUMEN DEL MES:
+- Total ingresos: $${ts.totalIncome || 0} COP
+- Total gastos: $${ts.totalExpenses || 0} COP
+- Balance: $${ts.balance || 0} COP
+- Numero de transacciones: ${ts.transactionCount || 0}
+
+INGRESOS POR CATEGORIA:
+${JSON.stringify(ts.incomeByCategory || {})}
+
+GASTOS POR CATEGORIA:
+${JSON.stringify(ts.expenseByCategory || {})}
+
+TOP 5 GASTOS MAS GRANDES:
+${JSON.stringify(ts.topExpenses || [])}
+
+PRESUPUESTOS (categoria, limite mensual, gastado):
+${JSON.stringify(budgets || [])}
+
+METAS DE AHORRO:
+${JSON.stringify(goals || [])}
+
+DEUDAS:
+${JSON.stringify(debts || [])}
 
 Genera un reporte con estas 5 secciones (usa emojis en los títulos):
 1. 📊 Resumen del mes (ingresos, gastos, balance)

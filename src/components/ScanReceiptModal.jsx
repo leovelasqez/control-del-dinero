@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { X, Camera, Upload, Loader } from 'lucide-react'
 import { EXPENSE_CATEGORIES } from '../lib/constants'
+import { compressImage } from '../lib/compressImage'
 import { scanReceipt } from '../api/anthropic'
 import toast from 'react-hot-toast'
 
@@ -18,38 +19,25 @@ export default function ScanReceiptModal({ onClose, onAdd }) {
       return
     }
 
-    const MAX_SIZE = 5 * 1024 * 1024 // 5MB
+    const MAX_SIZE = 10 * 1024 * 1024
     if (file.size > MAX_SIZE) {
-      toast.error('La imagen es muy grande. Máximo 5MB.')
+      toast.error('La imagen es muy grande. Maximo 10MB.')
       return
     }
 
     setScanning(true)
     try {
-      const reader = new FileReader()
-      reader.onerror = () => {
-        toast.error('Error al leer el archivo')
-        setScanning(false)
-      }
-      reader.onload = async () => {
-        const base64 = reader.result.split(',')[1]
-        try {
-          const data = await scanReceipt(base64, file.type)
-          setResult({
-            date: data.date || new Date().toISOString().split('T')[0],
-            category: EXPENSE_CATEGORIES.includes(data.category) ? data.category : 'Otros',
-            description: data.description || '',
-            amount: String(Math.abs(Number(String(data.amount).replace(/[^0-9.-]/g, ''))) || '')
-          })
-        } catch (err) {
-          toast.error('Error al escanear el recibo: ' + err.message)
-        } finally {
-          setScanning(false)
-        }
-      }
-      reader.readAsDataURL(file)
-    } catch {
-      toast.error('Error al leer el archivo')
+      const { base64, mediaType } = await compressImage(file)
+      const data = await scanReceipt(base64, mediaType)
+      setResult({
+        date: data.date || new Date().toISOString().split('T')[0],
+        category: EXPENSE_CATEGORIES.includes(data.category) ? data.category : 'Otros',
+        description: data.description || '',
+        amount: String(Math.abs(Number(String(data.amount).replace(/[^0-9.-]/g, ''))) || '')
+      })
+    } catch (err) {
+      toast.error('Error al escanear el recibo: ' + err.message)
+    } finally {
       setScanning(false)
     }
     if (fileRef.current) fileRef.current.value = ''

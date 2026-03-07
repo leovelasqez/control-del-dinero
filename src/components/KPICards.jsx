@@ -2,42 +2,24 @@ import { useMemo } from 'react'
 import { Wallet, TrendingUp, TrendingDown, CreditCard } from 'lucide-react'
 import { formatCOP } from '../lib/constants'
 
-export default function KPICards({ transactions, debts }) {
+export default function KPICards({ summary, debts }) {
   const stats = useMemo(() => {
-    const now = new Date()
-    const currentMonth = now.getMonth()
-    const currentYear = now.getFullYear()
-    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1
-    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear
-
-    let income = 0, expenses = 0, prevIncome = 0, prevExpenses = 0
-
-    transactions.forEach(t => {
-      const d = new Date(t.date)
-      const m = d.getMonth()
-      const y = d.getFullYear()
-      const amount = Number(t.amount)
-
-      if (m === currentMonth && y === currentYear) {
-        if (t.type === 'ingreso') income += amount
-        else expenses += amount
-      } else if (m === lastMonth && y === lastMonthYear) {
-        if (t.type === 'ingreso') prevIncome += amount
-        else prevExpenses += amount
-      }
-    })
-
+    if (!summary) return { income: 0, expenses: 0, balance: 0, totalDebt: 0, prevIncome: 0, prevExpenses: 0, prevBalance: 0 }
+    const cm = summary.current_month
+    const pm = summary.previous_month
+    const income = Number(cm.income)
+    const expenses = Number(cm.expenses)
+    const prevIncome = Number(pm.income)
+    const prevExpenses = Number(pm.expenses)
     const totalDebt = debts.reduce((sum, d) => sum + Number(d.current_balance), 0)
     const balance = income - expenses
     const prevBalance = prevIncome - prevExpenses
-
     return { income, expenses, balance, totalDebt, prevIncome, prevExpenses, prevBalance }
-  }, [transactions, debts])
+  }, [summary, debts])
 
   const trend = (current, previous) => {
     if (previous === 0) return null
-    const pct = ((current - previous) / Math.abs(previous)) * 100
-    return pct
+    return ((current - previous) / Math.abs(previous)) * 100
   }
 
   const balanceTrend = trend(stats.balance, stats.prevBalance)

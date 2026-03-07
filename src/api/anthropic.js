@@ -1,7 +1,9 @@
+import { fetchWithRetry } from '../lib/fetchWithRetry'
+
 const API_URL = '/api/anthropic'
 
 export async function scanReceipt(imageBase64, mediaType) {
-  const response = await fetch(API_URL, {
+  const response = await fetchWithRetry(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -9,6 +11,10 @@ export async function scanReceipt(imageBase64, mediaType) {
       image: imageBase64,
       mediaType
     })
+  }, {
+    maxRetries: 2,
+    timeout: 30000,
+    initialDelay: 1500
   })
 
   const data = await response.json()
@@ -19,19 +25,23 @@ export async function scanReceipt(imageBase64, mediaType) {
   return data
 }
 
-export async function generateMonthlyReport({ transactions, budgets, goals, debts, month, year }) {
-  const response = await fetch(API_URL, {
+export async function generateMonthlyReport({ transactionSummary, budgets, goals, debts, month, year }) {
+  const response = await fetchWithRetry(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       action: 'monthly-report',
-      transactions,
+      transactionSummary,
       budgets,
       goals,
       debts,
       month,
       year
     })
+  }, {
+    maxRetries: 3,
+    timeout: 60000,
+    initialDelay: 2000
   })
 
   if (!response.ok) {
@@ -42,7 +52,7 @@ export async function generateMonthlyReport({ transactions, budgets, goals, debt
 }
 
 export async function extractStatement(text, fileName) {
-  const response = await fetch(API_URL, {
+  const response = await fetchWithRetry(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -50,6 +60,10 @@ export async function extractStatement(text, fileName) {
       text,
       fileName
     })
+  }, {
+    maxRetries: 3,
+    timeout: 30000,
+    initialDelay: 1000
   })
 
   const data = await response.json()
@@ -61,12 +75,15 @@ export async function extractStatement(text, fileName) {
 }
 
 export async function importFromGmail() {
-  const response = await fetch(API_URL, {
+  const response = await fetchWithRetry(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       action: 'import-gmail'
     })
+  }, {
+    maxRetries: 1,
+    timeout: 15000
   })
 
   if (!response.ok) {

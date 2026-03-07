@@ -1,4 +1,5 @@
-import { Download, FileText } from 'lucide-react'
+import { useState } from 'react'
+import { Download, FileText, Loader } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { formatCOP } from '../lib/constants'
 
@@ -8,110 +9,120 @@ function escapeHtml(text) {
   return div.innerHTML
 }
 
-export default function ExportButtons({ transactions, budgets, goals, debts }) {
-  const exportExcel = () => {
-    const wb = XLSX.utils.book_new()
+export default function ExportButtons({ onExportData, budgets, goals, debts }) {
+  const [exporting, setExporting] = useState(false)
 
-    // Transacciones
-    const txData = transactions.map(t => ({
-      Fecha: t.date,
-      Tipo: t.type,
-      Categoria: t.category,
-      Descripcion: t.description,
-      Monto: Number(t.amount)
-    }))
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(txData), 'Transacciones')
+  const exportExcel = async () => {
+    setExporting(true)
+    try {
+      const transactions = await onExportData()
+      const wb = XLSX.utils.book_new()
 
-    // Presupuestos
-    const budgetData = budgets.map(b => ({
-      Categoria: b.category,
-      'Limite Mensual': Number(b.monthly_limit)
-    }))
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(budgetData), 'Presupuestos')
+      const txData = transactions.map(t => ({
+        Fecha: t.date,
+        Tipo: t.type,
+        Categoria: t.category,
+        Descripcion: t.description,
+        Monto: Number(t.amount)
+      }))
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(txData), 'Transacciones')
 
-    // Metas
-    const goalData = goals.map(g => ({
-      Nombre: g.name,
-      'Monto Objetivo': Number(g.target_amount),
-      'Monto Actual': Number(g.current_amount),
-      'Fecha Limite': g.deadline || 'Sin limite'
-    }))
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(goalData), 'Metas')
+      const budgetData = budgets.map(b => ({
+        Categoria: b.category,
+        'Limite Mensual': Number(b.monthly_limit)
+      }))
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(budgetData), 'Presupuestos')
 
-    // Deudas
-    const debtData = debts.map(d => ({
-      Nombre: d.name,
-      'Monto Original': Number(d.original_amount),
-      'Saldo Actual': Number(d.current_balance),
-      'Cuota Minima': Number(d.minimum_payment),
-      'Tasa Interes': Number(d.interest_rate) + '%'
-    }))
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(debtData), 'Deudas')
+      const goalData = goals.map(g => ({
+        Nombre: g.name,
+        'Monto Objetivo': Number(g.target_amount),
+        'Monto Actual': Number(g.current_amount),
+        'Fecha Limite': g.deadline || 'Sin limite'
+      }))
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(goalData), 'Metas')
 
-    XLSX.writeFile(wb, 'control-del-dinero.xlsx')
+      const debtData = debts.map(d => ({
+        Nombre: d.name,
+        'Monto Original': Number(d.original_amount),
+        'Saldo Actual': Number(d.current_balance),
+        'Cuota Minima': Number(d.minimum_payment),
+        'Tasa Interes': Number(d.interest_rate) + '%'
+      }))
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(debtData), 'Deudas')
+
+      XLSX.writeFile(wb, 'control-del-dinero.xlsx')
+    } finally {
+      setExporting(false)
+    }
   }
 
-  const exportPDF = () => {
-    const printWindow = window.open('', '_blank')
-    if (!printWindow) {
-      alert('El navegador bloqueó la ventana emergente. Permite las ventanas emergentes para este sitio.')
-      return
-    }
-    const html = `
-      <!DOCTYPE html>
-      <html><head><title>Control del Dinero - Reporte</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        h1 { color: #1e293b; }
-        table { width: 100%; border-collapse: collapse; margin: 16px 0; }
-        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
-        th { background: #f1f5f9; font-weight: 600; }
-        .green { color: #16a34a; }
-        .red { color: #dc2626; }
-        h2 { margin-top: 24px; color: #334155; }
-      </style></head><body>
-      <h1>Control del Dinero</h1>
-      <h2>Transacciones</h2>
-      <table>
-        <tr><th>Fecha</th><th>Tipo</th><th>Categoria</th><th>Descripcion</th><th>Monto</th></tr>
-        ${transactions.map(t => `
-          <tr>
-            <td>${escapeHtml(t.date)}</td>
-            <td>${escapeHtml(t.type)}</td>
-            <td>${escapeHtml(t.category)}</td>
-            <td>${escapeHtml(t.description)}</td>
-            <td class="${t.type === 'ingreso' ? 'green' : 'red'}">${escapeHtml(formatCOP(t.amount))}</td>
-          </tr>
-        `).join('')}
-      </table>
-      ${debts.length > 0 ? `
-        <h2>Deudas</h2>
+  const exportPDF = async () => {
+    setExporting(true)
+    try {
+      const transactions = await onExportData()
+      const printWindow = window.open('', '_blank')
+      if (!printWindow) {
+        alert('El navegador bloqueo la ventana emergente. Permite las ventanas emergentes para este sitio.')
+        return
+      }
+      const html = `
+        <!DOCTYPE html>
+        <html><head><title>Control del Dinero - Reporte</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          h1 { color: #1e293b; }
+          table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+          th, td { padding: 8px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+          th { background: #f1f5f9; font-weight: 600; }
+          .green { color: #16a34a; }
+          .red { color: #dc2626; }
+          h2 { margin-top: 24px; color: #334155; }
+        </style></head><body>
+        <h1>Control del Dinero</h1>
+        <h2>Transacciones</h2>
         <table>
-          <tr><th>Nombre</th><th>Saldo Actual</th><th>Cuota Minima</th><th>Tasa</th></tr>
-          ${debts.map(d => `
+          <tr><th>Fecha</th><th>Tipo</th><th>Categoria</th><th>Descripcion</th><th>Monto</th></tr>
+          ${transactions.map(t => `
             <tr>
-              <td>${escapeHtml(d.name)}</td>
-              <td class="red">${escapeHtml(formatCOP(d.current_balance))}</td>
-              <td>${escapeHtml(formatCOP(d.minimum_payment))}</td>
-              <td>${escapeHtml(d.interest_rate)}%</td>
+              <td>${escapeHtml(t.date)}</td>
+              <td>${escapeHtml(t.type)}</td>
+              <td>${escapeHtml(t.category)}</td>
+              <td>${escapeHtml(t.description)}</td>
+              <td class="${t.type === 'ingreso' ? 'green' : 'red'}">${escapeHtml(formatCOP(t.amount))}</td>
             </tr>
           `).join('')}
         </table>
-      ` : ''}
-      </body></html>
-    `
-    printWindow.document.write(html)
-    printWindow.document.close()
-    printWindow.print()
+        ${debts.length > 0 ? `
+          <h2>Deudas</h2>
+          <table>
+            <tr><th>Nombre</th><th>Saldo Actual</th><th>Cuota Minima</th><th>Tasa</th></tr>
+            ${debts.map(d => `
+              <tr>
+                <td>${escapeHtml(d.name)}</td>
+                <td class="red">${escapeHtml(formatCOP(d.current_balance))}</td>
+                <td>${escapeHtml(formatCOP(d.minimum_payment))}</td>
+                <td>${escapeHtml(d.interest_rate)}%</td>
+              </tr>
+            `).join('')}
+          </table>
+        ` : ''}
+        </body></html>
+      `
+      printWindow.document.write(html)
+      printWindow.document.close()
+      printWindow.print()
+    } finally {
+      setExporting(false)
+    }
   }
 
   return (
     <div className="flex gap-2">
-      <button className="btn btn-ghost btn-sm" onClick={exportExcel}>
-        <Download size={14} /> Excel
+      <button className="btn btn-ghost btn-sm" onClick={exportExcel} disabled={exporting}>
+        {exporting ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Download size={14} />} Excel
       </button>
-      <button className="btn btn-ghost btn-sm" onClick={exportPDF}>
-        <FileText size={14} /> PDF
+      <button className="btn btn-ghost btn-sm" onClick={exportPDF} disabled={exporting}>
+        {exporting ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <FileText size={14} />} PDF
       </button>
     </div>
   )

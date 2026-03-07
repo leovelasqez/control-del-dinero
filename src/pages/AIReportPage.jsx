@@ -2,9 +2,12 @@ import { useState } from 'react'
 import { Bot, Loader } from 'lucide-react'
 import { generateMonthlyReport } from '../api/anthropic'
 import { MONTHS } from '../lib/constants'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
 
-export default function AIReportPage({ transactions, budgets, goals, debts }) {
+export default function AIReportPage({ budgets, goals, debts }) {
+  const { user } = useAuth()
   const now = new Date()
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [year, setYear] = useState(now.getFullYear())
@@ -15,10 +18,24 @@ export default function AIReportPage({ transactions, budgets, goals, debts }) {
     setLoading(true)
     setReport('')
 
-    const monthTx = transactions.filter(t => {
-      const d = new Date(t.date)
-      return d.getMonth() + 1 === month && d.getFullYear() === year
-    })
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+    const endDate = month === 12
+      ? `${year + 1}-01-01`
+      : `${year}-${String(month + 1).padStart(2, '0')}-01`
+
+    const { data: monthTx, error } = await supabase
+      .from('transactions')
+      .select('date, type, category, description, amount')
+      .eq('user_id', user.id)
+      .gte('date', startDate)
+      .lt('date', endDate)
+      .order('date', { ascending: false })
+
+    if (error) {
+      toast.error('Error al cargar transacciones del mes')
+      setLoading(false)
+      return
+    }
 
     if (monthTx.length === 0) {
       toast.error(`No hay transacciones en ${MONTHS[month - 1]} ${year}`)
@@ -26,12 +43,60 @@ export default function AIReportPage({ transactions, budgets, goals, debts }) {
       return
     }
 
+    const txSummary = {
+      totalIncome: 0,
+      totalExpenses: 0,
+      transactionCount: monthTx.length,
+      incomeByCategory: {},
+      expenseByCategory: {},
+      topExpenses: []
+    }
+
+    monthTx.forEach(t => {
+      const amount = Number(t.amount)
+      if (t.type === 'ingreso') {
+        txSummary.totalIncome += amount
+        txSummary.incomeByCategory[t.category] = (txSummary.incomeByCategory[t.category] || 0) + amount
+      } else {
+        txSummary.totalExpenses += amount
+        txSummary.expenseByCategory[t.category] = (txSummary.expenseByCategory[t.category] || 0) + amount
+      }
+    })
+
+    txSummary.balance = txSummary.totalIncome - txSummary.totalExpenses
+
+    txSummary.topExpenses = monthTx
+      .filter(t => t.type === 'gasto')
+      .sort((a, b) => Number(b.amount) - Number(a.amount))
+      .slice(0, 5)
+      .map(t => ({ date: t.date, category: t.category, description: t.description, amount: Number(t.amount) }))
+
+    const budgetSummary = budgets.map(b => ({
+      category: b.category,
+      monthly_limit: Number(b.monthly_limit),
+      spent: txSummary.expenseByCategory[b.category] || 0
+    }))
+
+    const goalSummary = goals.map(g => ({
+      name: g.name,
+      target: Number(g.target_amount),
+      current: Number(g.current_amount),
+      deadline: g.deadline
+    }))
+
+    const debtSummary = debts.map(d => ({
+      name: d.name,
+      balance: Number(d.current_balance),
+      minimum_payment: Number(d.minimum_payment),
+      interest_rate: Number(d.interest_rate)
+    }))
+
     try {
       const data = await generateMonthlyReport({
-        transactions: monthTx,
-        budgets,
-        goals,
-        debts,
+        transactionSummary: txSummary,
+        budgets: budgetSummary,
+        goals: goalSummary,
+        debts: debtSummary,
         month,
         year
       })
@@ -55,7 +120,7 @@ export default function AIReportPage({ transactions, budgets, goals, debts }) {
             </select>
           </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Año</label>
+            <label>Ano</label>
             <input type="number" className="form-input" value={year} onChange={e => setYear(Number(e.target.value))} min="2020" max="2030" />
           </div>
           <button className="btn btn-primary btn-sm" onClick={handleGenerate} disabled={loading}>
