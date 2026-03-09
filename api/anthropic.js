@@ -1,14 +1,42 @@
 // Vercel Serverless Function - Proxy seguro para Anthropic API
 // La API key nunca se expone al frontend
 
+import { createClient } from '@supabase/supabase-js'
+
 const EXPENSE_CATEGORIES = [
   'Comida', 'Transporte', 'Entretenimiento', 'Salud',
   'Educación', 'Vivienda', 'Ropa', 'Otros'
 ]
 
+async function verifyAuth(req) {
+  const authHeader = req.headers.authorization
+  if (!authHeader?.startsWith('Bearer ')) {
+    return null
+  }
+
+  const supabaseUrl = process.env.VITE_SUPABASE_URL
+  const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return null
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseAnonKey)
+  const { data: { user }, error } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''))
+  if (error || !user) {
+    return null
+  }
+  return user
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  // Verificar autenticacion del usuario
+  const user = await verifyAuth(req)
+  if (!user) {
+    return res.status(401).json({ error: 'No autorizado. Inicia sesion para usar esta funcion.' })
   }
 
   const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY

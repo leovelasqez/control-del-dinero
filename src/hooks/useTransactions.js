@@ -67,7 +67,7 @@ export function useTransactions() {
   const fetchSummary = useCallback(async () => {
     if (!user) return
     setSummaryLoading(true)
-    const { data, error } = await supabase.rpc('get_dashboard_summary', { p_user_id: user.id })
+    const { data, error } = await supabase.rpc('get_dashboard_summary')
     if (error) {
       console.error('Error fetching summary:', error)
     } else {

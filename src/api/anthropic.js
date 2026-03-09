@@ -1,11 +1,22 @@
 import { fetchWithRetry } from '../lib/fetchWithRetry'
+import { supabase } from '../lib/supabase'
 
 const API_URL = '/api/anthropic'
 
+async function getAuthHeaders() {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  }
+}
+
 export async function scanReceipt(imageBase64, mediaType) {
+  const headers = await getAuthHeaders()
   const response = await fetchWithRetry(API_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({
       action: 'scan-receipt',
       image: imageBase64,
@@ -26,9 +37,10 @@ export async function scanReceipt(imageBase64, mediaType) {
 }
 
 export async function generateMonthlyReport({ transactionSummary, budgets, goals, debts, month, year }) {
+  const headers = await getAuthHeaders()
   const response = await fetchWithRetry(API_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({
       action: 'monthly-report',
       transactionSummary,
@@ -52,9 +64,10 @@ export async function generateMonthlyReport({ transactionSummary, budgets, goals
 }
 
 export async function extractStatement(text, fileName) {
+  const headers = await getAuthHeaders()
   const response = await fetchWithRetry(API_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({
       action: 'extract-statement',
       text,
@@ -75,9 +88,10 @@ export async function extractStatement(text, fileName) {
 }
 
 export async function importFromGmail() {
+  const headers = await getAuthHeaders()
   const response = await fetchWithRetry(API_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({
       action: 'import-gmail'
     })

@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import { createClient } from '@supabase/supabase-js'
 
 const EXPENSE_CATEGORIES = [
   'Comida', 'Transporte', 'Entretenimiento', 'Salud',
@@ -15,6 +16,26 @@ function anthropicProxy(env) {
           res.statusCode = 405
           res.end(JSON.stringify({ error: 'Method not allowed' }))
           return
+        }
+
+        // Verificar autenticacion
+        const authHeader = req.headers.authorization
+        if (!authHeader?.startsWith('Bearer ')) {
+          res.statusCode = 401
+          res.end(JSON.stringify({ error: 'No autorizado' }))
+          return
+        }
+
+        const supabaseUrl = env.VITE_SUPABASE_URL
+        const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY
+        if (supabaseUrl && supabaseAnonKey) {
+          const supabase = createClient(supabaseUrl, supabaseAnonKey)
+          const { data: { user }, error } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''))
+          if (error || !user) {
+            res.statusCode = 401
+            res.end(JSON.stringify({ error: 'Token invalido o expirado' }))
+            return
+          }
         }
 
         const ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY

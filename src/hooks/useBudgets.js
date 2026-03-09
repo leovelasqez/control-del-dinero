@@ -28,7 +28,7 @@ export function useBudgets() {
 
   const fetchSpent = useCallback(async () => {
     if (!user) return
-    const { data, error } = await supabase.rpc('get_current_month_spent', { p_user_id: user.id })
+    const { data, error } = await supabase.rpc('get_current_month_spent')
     if (!error && data) setSpentByCategory(data)
   }, [user])
 

@@ -5,10 +5,11 @@
 
 -- Funcion: Resumen completo del dashboard
 -- Retorna KPIs del mes actual/anterior, datos para graficas y historial
-create or replace function get_dashboard_summary(p_user_id uuid)
+-- Usa auth.uid() directamente para evitar IDOR
+create or replace function get_dashboard_summary()
 returns json
 language sql
-security definer
+security invoker
 set search_path = public
 as $$
   select json_build_object(
@@ -18,7 +19,7 @@ as $$
         'expenses', coalesce(sum(case when type = 'gasto' then amount else 0 end), 0)
       )
       from transactions
-      where user_id = p_user_id
+      where user_id = auth.uid()
         and date >= date_trunc('month', current_date)
         and date < date_trunc('month', current_date) + interval '1 month'
     ),
@@ -28,7 +29,7 @@ as $$
         'expenses', coalesce(sum(case when type = 'gasto' then amount else 0 end), 0)
       )
       from transactions
-      where user_id = p_user_id
+      where user_id = auth.uid()
         and date >= date_trunc('month', current_date) - interval '1 month'
         and date < date_trunc('month', current_date)
     ),
@@ -39,7 +40,7 @@ as $$
                sum(case when type = 'ingreso' then amount else 0 end) as ingresos,
                sum(case when type = 'gasto' then amount else 0 end) as gastos
         from transactions
-        where user_id = p_user_id
+        where user_id = auth.uid()
         group by to_char(date, 'YYYY-MM')
       ) m
     ),
@@ -48,7 +49,7 @@ as $$
       from (
         select category as name, sum(amount) as value
         from transactions
-        where user_id = p_user_id
+        where user_id = auth.uid()
           and type = 'gasto'
           and date >= date_trunc('month', current_date)
           and date < date_trunc('month', current_date) + interval '1 month'
@@ -63,7 +64,7 @@ as $$
           sum(case when type = 'ingreso' then amount else 0 end) as ingresos,
           sum(case when type = 'gasto' then amount else 0 end) as gastos
         from transactions
-        where user_id = p_user_id
+        where user_id = auth.uid()
         group by to_char(date, 'YYYY-MM')
       ) h
     ),
@@ -74,7 +75,7 @@ as $$
                category,
                sum(amount) as total
         from transactions
-        where user_id = p_user_id and type = 'gasto'
+        where user_id = auth.uid() and type = 'gasto'
         group by to_char(date, 'YYYY-MM'), category
       ) r
     )
@@ -82,10 +83,11 @@ as $$
 $$;
 
 -- Funcion: Gasto del mes actual por categoria (para presupuestos)
-create or replace function get_current_month_spent(p_user_id uuid)
+-- Usa auth.uid() directamente para evitar IDOR
+create or replace function get_current_month_spent()
 returns json
 language sql
-security definer
+security invoker
 set search_path = public
 as $$
   select coalesce(
@@ -95,7 +97,7 @@ as $$
   from (
     select category, sum(amount) as total
     from transactions
-    where user_id = p_user_id
+    where user_id = auth.uid()
       and type = 'gasto'
       and date >= date_trunc('month', current_date)
       and date < date_trunc('month', current_date) + interval '1 month'
