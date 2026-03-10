@@ -105,7 +105,7 @@ export default function App() {
               </div>
             </div>
 
-            <KPICards summary={summary} />
+            <KPICards summary={summary} budgets={budgets} />
 
             <div className="grid-charts">
               <MonthlyChart />

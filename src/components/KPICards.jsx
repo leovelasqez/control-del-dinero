@@ -1,43 +1,34 @@
 import { useMemo } from 'react'
-import { Wallet, TrendingUp, TrendingDown, Percent } from 'lucide-react'
+import { TrendingUp, TrendingDown, ClipboardList, PiggyBank } from 'lucide-react'
 import { formatCOP } from '../lib/constants'
 
-export default function KPICards({ summary }) {
+export default function KPICards({ summary, budgets = [] }) {
   const stats = useMemo(() => {
-    if (!summary) return { income: 0, expenses: 0, balance: 0, savingsRate: 0, prevIncome: 0, prevExpenses: 0, prevBalance: 0, prevSavingsRate: 0 }
+    if (!summary) return { income: 0, expenses: 0, prevIncome: 0, prevExpenses: 0 }
     const cm = summary.current_month
     const pm = summary.previous_month
     const income = Number(cm.income)
     const expenses = Number(cm.expenses)
     const prevIncome = Number(pm.income)
     const prevExpenses = Number(pm.expenses)
-    const balance = income - expenses
-    const prevBalance = prevIncome - prevExpenses
-    const savingsRate = income > 0 ? ((income - expenses) / income) * 100 : 0
-    const prevSavingsRate = prevIncome > 0 ? ((prevIncome - prevExpenses) / prevIncome) * 100 : 0
-    return { income, expenses, balance, savingsRate, prevIncome, prevExpenses, prevBalance, prevSavingsRate }
+    return { income, expenses, prevIncome, prevExpenses }
   }, [summary])
+
+  const totalBudget = useMemo(() => {
+    return budgets.reduce((sum, b) => sum + Number(b.amount), 0)
+  }, [budgets])
+
+  const porAsignar = stats.income - totalBudget
 
   const trend = (current, previous) => {
     if (previous === 0) return null
     return ((current - previous) / Math.abs(previous)) * 100
   }
 
-  const balanceTrend = trend(stats.balance, stats.prevBalance)
   const incomeTrend = trend(stats.income, stats.prevIncome)
   const expenseTrend = trend(stats.expenses, stats.prevExpenses)
-  const savingsTrend = trend(stats.savingsRate, stats.prevSavingsRate)
 
   const cards = [
-    {
-      label: 'Balance del mes',
-      value: formatCOP(stats.balance),
-      valueClass: stats.balance >= 0 ? 'green' : 'red',
-      icon: Wallet,
-      iconClass: 'kpi-icon-balance',
-      trend: balanceTrend,
-      trendInverted: false
-    },
     {
       label: 'Ingresos',
       value: formatCOP(stats.income),
@@ -57,12 +48,21 @@ export default function KPICards({ summary }) {
       trendInverted: true
     },
     {
-      label: 'Tasa de ahorro',
-      value: `${stats.savingsRate.toFixed(1)}%`,
-      valueClass: stats.savingsRate >= 0 ? 'green' : 'red',
-      icon: Percent,
-      iconClass: 'kpi-icon-savings',
-      trend: savingsTrend,
+      label: 'Presupuesto del mes',
+      value: formatCOP(totalBudget),
+      valueClass: totalBudget > 0 ? 'blue' : 'gray',
+      icon: ClipboardList,
+      iconClass: 'kpi-icon-budget',
+      trend: null,
+      trendInverted: false
+    },
+    {
+      label: 'Por asignar',
+      value: formatCOP(porAsignar),
+      valueClass: porAsignar >= 0 ? 'green' : 'red',
+      icon: PiggyBank,
+      iconClass: 'kpi-icon-available',
+      trend: null,
       trendInverted: false
     }
   ]
