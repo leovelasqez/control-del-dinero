@@ -1,18 +1,26 @@
-import { useState } from 'react'
-import { Trash2, Pencil, Search, ChevronLeft, ChevronRight } from 'lucide-react'
-import { formatCOP } from '../lib/constants'
+import { useState, useMemo } from 'react'
+import { Trash2, Pencil, Search, ChevronLeft, ChevronRight, Filter } from 'lucide-react'
+import { formatCOP, CATEGORY_EMOJIS } from '../lib/constants'
 import EditTransactionModal from './EditTransactionModal'
 import ConfirmDialog from './ConfirmDialog'
 
 export default function TransactionTable({
   transactions, totalCount, page, setPage, pageSize,
   filter, setFilter, search, setSearch,
-  onDelete, onUpdate, loading
+  onDelete, onUpdate, loading, summary
 }) {
   const [editing, setEditing] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+
+  const { totalIncome, totalExpenses } = useMemo(() => {
+    if (!summary?.current_month) return { totalIncome: 0, totalExpenses: 0 }
+    return {
+      totalIncome: Number(summary.current_month.income),
+      totalExpenses: Number(summary.current_month.expenses)
+    }
+  }, [summary])
 
   const handleDelete = (id) => {
     onDelete(id)
@@ -21,21 +29,28 @@ export default function TransactionTable({
 
   return (
     <div className="card mt-4">
-      <div className="flex justify-between items-center mb-4" style={{ flexWrap: 'wrap', gap: 8 }}>
-        <div className="card-title" style={{ marginBottom: 0 }}>Transacciones</div>
+      <div className="tx-header">
+        <div className="tx-header-left">
+          <div className="card-title" style={{ marginBottom: 0 }}>Transacciones</div>
+          <div className="tx-summary">
+            <span className="tx-summary-income">+{formatCOP(totalIncome)}</span>
+            <span className="tx-summary-expense">-{formatCOP(totalExpenses)}</span>
+          </div>
+        </div>
         <div className="flex gap-2 items-center" style={{ flexWrap: 'wrap' }}>
           <div style={{ position: 'relative' }}>
             <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
             <input
               type="text"
               className="form-input"
-              placeholder="Buscar..."
+              placeholder="Buscar transacciones..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              style={{ paddingLeft: 32, width: 180, marginBottom: 0 }}
+              style={{ paddingLeft: 32, width: 220, marginBottom: 0 }}
             />
           </div>
           <div className="filter-tabs" style={{ marginBottom: 0 }}>
+            <Filter size={13} style={{ color: 'var(--text-muted)', marginRight: 4, flexShrink: 0, alignSelf: 'center' }} />
             {['todas', 'ingresos', 'gastos'].map(f => (
               <button
                 key={f}
@@ -62,6 +77,7 @@ export default function TransactionTable({
                   <th>Fecha</th>
                   <th>Tipo</th>
                   <th>Categoria</th>
+                  <th>Cuenta</th>
                   <th>Descripcion</th>
                   <th>Monto</th>
                   <th></th>
@@ -70,7 +86,7 @@ export default function TransactionTable({
               <tbody>
                 {transactions.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center text-muted" style={{ padding: 24 }}>
+                    <td colSpan={7} className="text-center text-muted" style={{ padding: 24 }}>
                       {search ? 'Sin resultados para la busqueda' : 'No hay transacciones'}
                     </td>
                   </tr>
@@ -83,7 +99,11 @@ export default function TransactionTable({
                           {t.type}
                         </span>
                       </td>
-                      <td>{t.category}</td>
+                      <td>
+                        <span className="tx-category-emoji">{CATEGORY_EMOJIS[t.category] || '📦'}</span>
+                        {t.category}
+                      </td>
+                      <td>{t.account || 'Efectivo'}</td>
                       <td>{t.description}</td>
                       <td className={t.type === 'ingreso' ? 'text-green' : 'text-red'}>
                         {t.type === 'ingreso' ? '+' : '-'}{formatCOP(t.amount)}

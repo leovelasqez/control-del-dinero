@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../lib/constants'
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, ACCOUNT_OPTIONS } from '../lib/constants'
 
 export default function AddTransactionModal({ onClose, onAdd, initialType = 'gasto' }) {
   const [form, setForm] = useState({
@@ -8,8 +8,10 @@ export default function AddTransactionModal({ onClose, onAdd, initialType = 'gas
     type: initialType,
     category: initialType === 'ingreso' ? 'Salario' : 'Comida',
     description: '',
-    amount: ''
+    amount: '',
+    account: 'Efectivo'
   })
+  const [customAccount, setCustomAccount] = useState('')
 
   const categories = form.type === 'gasto' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES
 
@@ -19,12 +21,14 @@ export default function AddTransactionModal({ onClose, onAdd, initialType = 'gas
     e.preventDefault()
     if (!form.amount || Number(form.amount) <= 0 || submitting) return
     setSubmitting(true)
+    const accountValue = form.account === 'Otra' ? customAccount.trim() || 'Otra' : form.account
     const result = await onAdd({
       date: form.date,
       type: form.type,
       category: form.category,
       description: form.description,
-      amount: Number(form.amount)
+      amount: Number(form.amount),
+      account: accountValue
     })
     if (result) {
       onClose()
@@ -61,6 +65,29 @@ export default function AddTransactionModal({ onClose, onAdd, initialType = 'gas
               {categories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
+          <div className="form-group">
+            <label>Cuenta</label>
+            <select
+              className="form-input"
+              value={form.account}
+              onChange={e => setForm({ ...form, account: e.target.value })}
+            >
+              {ACCOUNT_OPTIONS.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          {form.account === 'Otra' && (
+            <div className="form-group">
+              <label>Nombre de la cuenta</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Ej: Nequi, Daviplata..."
+                value={customAccount}
+                onChange={e => setCustomAccount(e.target.value)}
+                required
+              />
+            </div>
+          )}
           <div className="form-group">
             <label>Descripcion</label>
             <input

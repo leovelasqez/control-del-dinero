@@ -28,8 +28,10 @@ export default function ExportButtons({ onExportData, budgets, goals, debts }) {
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(txData), 'Transacciones')
 
       const budgetData = budgets.map(b => ({
+        Mes: b.month,
         Categoria: b.category,
-        'Limite Mensual': Number(b.monthly_limit)
+        Subcategoria: b.subcategory || '',
+        Monto: Number(b.amount)
       }))
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(budgetData), 'Presupuestos')
 

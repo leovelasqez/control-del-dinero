@@ -17,6 +17,7 @@ export function useTransactions() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [summary, setSummary] = useState(null)
   const [summaryLoading, setSummaryLoading] = useState(true)
+  const [accountBalances, setAccountBalances] = useState([])
   const debounceRef = useRef(null)
 
   // Debounce search
@@ -76,6 +77,37 @@ export function useTransactions() {
     setSummaryLoading(false)
   }, [user])
 
+  const fetchAccountBalances = useCallback(async () => {
+    if (!user) return
+    const now = new Date()
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+    const nextMonth = now.getMonth() === 11
+      ? `${now.getFullYear() + 1}-01-01`
+      : `${now.getFullYear()}-${String(now.getMonth() + 2).padStart(2, '0')}-01`
+
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('account, type, amount')
+      .gte('date', monthStart)
+      .lt('date', nextMonth)
+
+    if (error) {
+      console.error('Error fetching account balances:', error)
+      return
+    }
+
+    const balances = {}
+    data.forEach(t => {
+      const acc = t.account || 'Efectivo'
+      if (!balances[acc]) balances[acc] = 0
+      balances[acc] += t.type === 'ingreso' ? Number(t.amount) : -Number(t.amount)
+    })
+
+    setAccountBalances(
+      Object.entries(balances).map(([name, balance]) => ({ name, balance }))
+    )
+  }, [user])
+
   useEffect(() => {
     fetchTransactions()
   }, [fetchTransactions])
@@ -84,9 +116,13 @@ export function useTransactions() {
     fetchSummary()
   }, [fetchSummary])
 
+  useEffect(() => {
+    fetchAccountBalances()
+  }, [fetchAccountBalances])
+
   const refreshAll = useCallback(async () => {
-    await Promise.all([fetchTransactions(), fetchSummary()])
-  }, [fetchTransactions, fetchSummary])
+    await Promise.all([fetchTransactions(), fetchSummary(), fetchAccountBalances()])
+  }, [fetchTransactions, fetchSummary, fetchAccountBalances])
 
   const addTransaction = async (transaction) => {
     const { data, error } = await supabase
@@ -183,6 +219,7 @@ export function useTransactions() {
     loading,
     summary,
     summaryLoading,
+    accountBalances,
     addTransaction,
     addMultipleTransactions,
     updateTransaction,

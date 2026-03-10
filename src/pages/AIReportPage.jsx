@@ -73,8 +73,9 @@ export default function AIReportPage({ budgets, goals, debts }) {
 
     const budgetSummary = budgets.map(b => ({
       category: b.category,
-      monthly_limit: Number(b.monthly_limit),
-      spent: txSummary.expenseByCategory[b.category] || 0
+      subcategory: b.subcategory || null,
+      monthly_limit: Number(b.amount),
+      spent: txSummary.expenseByCategory[b.subcategory || b.category] || 0
     }))
 
     const goalSummary = goals.map(g => ({

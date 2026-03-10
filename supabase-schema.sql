@@ -128,6 +128,21 @@ create policy "Users can delete own debt_payments"
   on public.debt_payments for delete using (auth.uid() = user_id);
 
 -- ============================================
+-- CAMPO CUENTA EN TRANSACCIONES
+-- ============================================
+alter table public.transactions add column if not exists account text not null default 'Efectivo';
+
+-- ============================================
+-- PRESUPUESTOS: SOPORTE MENSUAL + SUBCATEGORIAS
+-- ============================================
+alter table public.budgets add column if not exists month text not null default to_char(current_date, 'YYYY-MM');
+alter table public.budgets add column if not exists subcategory text;
+alter table public.budgets rename column monthly_limit to amount;
+alter table public.budgets drop constraint if exists budgets_user_id_category_key;
+alter table public.budgets add constraint budgets_unique_item unique(user_id, month, category, subcategory);
+create index if not exists idx_budgets_month on public.budgets(user_id, month);
+
+-- ============================================
 -- EXTENSIONES PARA EXTRACTOS BANCARIOS
 -- Ejecutar después de las tablas base
 -- ============================================

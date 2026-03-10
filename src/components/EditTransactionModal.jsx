@@ -1,15 +1,18 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../lib/constants'
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, ACCOUNT_OPTIONS } from '../lib/constants'
 
 export default function EditTransactionModal({ transaction, onClose, onSave }) {
+  const isKnownAccount = ACCOUNT_OPTIONS.includes(transaction.account)
   const [form, setForm] = useState({
     date: transaction.date,
     type: transaction.type,
     category: transaction.category,
     description: transaction.description,
-    amount: String(transaction.amount)
+    amount: String(transaction.amount),
+    account: isKnownAccount ? (transaction.account || 'Efectivo') : 'Otra'
   })
+  const [customAccount, setCustomAccount] = useState(isKnownAccount ? '' : (transaction.account || ''))
 
   const categories = form.type === 'gasto' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES
 
@@ -19,12 +22,14 @@ export default function EditTransactionModal({ transaction, onClose, onSave }) {
     e.preventDefault()
     if (!form.amount || Number(form.amount) <= 0 || submitting) return
     setSubmitting(true)
+    const accountValue = form.account === 'Otra' ? customAccount.trim() || 'Otra' : form.account
     const result = await onSave(transaction.id, {
       date: form.date,
       type: form.type,
       category: form.category,
       description: form.description,
-      amount: Number(form.amount)
+      amount: Number(form.amount),
+      account: accountValue
     })
     if (result) {
       onClose()
@@ -80,6 +85,29 @@ export default function EditTransactionModal({ transaction, onClose, onSave }) {
               {categories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
+          <div className="form-group">
+            <label>Cuenta</label>
+            <select
+              className="form-input"
+              value={form.account}
+              onChange={e => setForm({ ...form, account: e.target.value })}
+            >
+              {ACCOUNT_OPTIONS.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          {form.account === 'Otra' && (
+            <div className="form-group">
+              <label>Nombre de la cuenta</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Ej: Nequi, Daviplata..."
+                value={customAccount}
+                onChange={e => setCustomAccount(e.target.value)}
+                required
+              />
+            </div>
+          )}
           <div className="form-group">
             <label>Descripcion</label>
             <input

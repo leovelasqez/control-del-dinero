@@ -34,3 +34,25 @@ export const MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ]
+
+export const ACCOUNT_OPTIONS = [
+  'Tarjeta debito',
+  'Tarjeta de credito',
+  'Efectivo',
+  'Ahorros',
+  'Otra'
+]
+
+export const CATEGORY_EMOJIS = {
+  Comida: '🍽️',
+  Transporte: '🚗',
+  Entretenimiento: '🎬',
+  Salud: '💊',
+  'Educación': '📚',
+  Vivienda: '🏠',
+  Ropa: '🛍️',
+  Otros: '📦',
+  Salario: '💼',
+  Freelance: '💻',
+  Inversiones: '📈'
+}
