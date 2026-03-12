@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts'
 import { MONTHS, formatCOP } from '../lib/constants'
 import { useTheme } from '../hooks/useTheme'
@@ -82,29 +82,31 @@ export default function MonthlyChart() {
   const [rawData, setRawData] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const fetchData = useCallback(async () => {
-    setLoading(true)
-    const { startDate, endDate } = getDateRange(period)
-
-    const { data, error } = await supabase
-      .from('transactions')
-      .select('date, type, amount')
-      .gte('date', startDate)
-      .lt('date', endDate)
-      .order('date', { ascending: true })
-
-    if (error) {
-      console.error('Error fetching chart data:', error)
-      setRawData([])
-    } else {
-      setRawData(data || [])
-    }
-    setLoading(false)
-  }, [period])
-
   useEffect(() => {
+    let cancelled = false
+    async function fetchData() {
+      setLoading(true)
+      const { startDate, endDate } = getDateRange(period)
+
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('date, type, amount')
+        .gte('date', startDate)
+        .lt('date', endDate)
+        .order('date', { ascending: true })
+
+      if (cancelled) return
+      if (error) {
+        console.error('Error fetching chart data:', error)
+        setRawData([])
+      } else {
+        setRawData(data || [])
+      }
+      setLoading(false)
+    }
     fetchData()
-  }, [fetchData])
+    return () => { cancelled = true }
+  }, [period])
 
   const data = useMemo(() => {
     if (rawData.length === 0) return []

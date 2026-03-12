@@ -46,7 +46,14 @@ export function useTransactions() {
     else if (filter === 'gastos') query = query.eq('type', 'gasto')
 
     if (debouncedSearch.trim()) {
-      query = query.or(`description.ilike.%${debouncedSearch}%,category.ilike.%${debouncedSearch}%`)
+      // Escape LIKE wildcards and strip PostgREST filter-syntax characters (commas, parens, dots)
+      // to prevent filter injection via the .or() string
+      const sanitized = debouncedSearch
+        .replace(/[%_\\]/g, '\\$&')
+        .replace(/[(),."']/g, '')
+      if (sanitized.trim()) {
+        query = query.or(`description.ilike.%${sanitized}%,category.ilike.%${sanitized}%`)
+      }
     }
 
     const from = (page - 1) * PAGE_SIZE

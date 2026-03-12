@@ -8,19 +8,31 @@ const EXPENSE_CATEGORIES = [
   'Educación', 'Vivienda', 'Ropa', 'Otros'
 ]
 
+const VALID_ACTIONS = ['scan-receipt', 'monthly-report', 'extract-statement', 'import-gmail']
+const ALLOWED_MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 10MB in base64 chars (~7.5MB raw)
+
+// Module-scope Supabase client (reused across warm invocations)
+let _supabase = null
+function getSupabase() {
+  if (!_supabase) {
+    const supabaseUrl = process.env.VITE_SUPABASE_URL
+    const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY
+    if (!supabaseUrl || !supabaseAnonKey) return null
+    _supabase = createClient(supabaseUrl, supabaseAnonKey)
+  }
+  return _supabase
+}
+
 async function verifyAuth(req) {
   const authHeader = req.headers.authorization
   if (!authHeader?.startsWith('Bearer ')) {
     return null
   }
 
-  const supabaseUrl = process.env.VITE_SUPABASE_URL
-  const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return null
-  }
+  const supabase = getSupabase()
+  if (!supabase) return null
 
-  const supabase = createClient(supabaseUrl, supabaseAnonKey)
   const { data: { user }, error } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''))
   if (error || !user) {
     return null
@@ -46,8 +58,24 @@ export default async function handler(req, res) {
 
   const { action, image, mediaType, transactionSummary, budgets, goals, debts, month, year, text, fileName } = req.body
 
+  // Validate action
+  if (!action || !VALID_ACTIONS.includes(action)) {
+    return res.status(400).json({ error: 'Accion no valida' })
+  }
+
   try {
     if (action === 'scan-receipt') {
+      // Validate image input
+      if (!image || typeof image !== 'string') {
+        return res.status(400).json({ error: 'Imagen requerida' })
+      }
+      if (image.length > MAX_IMAGE_SIZE) {
+        return res.status(400).json({ error: 'La imagen es demasiado grande' })
+      }
+      if (!ALLOWED_MEDIA_TYPES.includes(mediaType)) {
+        return res.status(400).json({ error: 'Tipo de imagen no soportado' })
+      }
+
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -84,8 +112,12 @@ Solo responde con el JSON, sin texto adicional. La moneda es pesos colombianos (
       const data = await response.json()
       if (!response.ok) throw new Error(data.error?.message || 'Error de Anthropic')
 
-      const text = data.content[0].text
-      const jsonMatch = text.match(/\{[^{}]*\}/)
+      if (!data.content?.[0]?.text) {
+        return res.status(502).json({ error: 'Respuesta inesperada de la API' })
+      }
+
+      const responseText = data.content[0].text
+      const jsonMatch = responseText.match(/\{[^{}]*\}/)
       if (!jsonMatch) throw new Error('No se pudo extraer JSON del recibo')
 
       let parsed
@@ -99,8 +131,15 @@ Solo responde con el JSON, sin texto adicional. La moneda es pesos colombianos (
     }
 
     if (action === 'monthly-report') {
+      // Validate month/year to prevent injection into prompt
+      const safeMonth = Number(month)
+      const safeYear = Number(year)
+      if (!safeMonth || safeMonth < 1 || safeMonth > 12 || !safeYear || safeYear < 2020 || safeYear > 2100) {
+        return res.status(400).json({ error: 'Mes o año invalido' })
+      }
+
       const ts = transactionSummary || {}
-      const prompt = `Eres un asesor financiero personal. Analiza los datos financieros del mes ${month}/${year} y genera un reporte personalizado.
+      const prompt = `Eres un asesor financiero personal. Analiza los datos financieros del mes ${safeMonth}/${safeYear} y genera un reporte personalizado.
 
 RESUMEN DEL MES:
 - Total ingresos: $${ts.totalIncome || 0} COP
@@ -152,13 +191,20 @@ Usa moneda COP (pesos colombianos). Sé específico con los números.`
       const data = await response.json()
       if (!response.ok) throw new Error(data.error?.message || 'Error de Anthropic')
 
+      if (!data.content?.[0]?.text) {
+        return res.status(502).json({ error: 'Respuesta inesperada de la API' })
+      }
+
       return res.status(200).json({ report: data.content[0].text })
     }
 
     if (action === 'extract-statement') {
-      if (!text || text.length < 50) {
+      if (!text || typeof text !== 'string' || text.length < 50) {
         return res.status(400).json({ error: 'El PDF no contiene suficiente texto. Puede ser un documento escaneado como imagen.' })
       }
+
+      // Sanitize fileName to prevent prompt injection
+      const safeFileName = (fileName || 'extracto.pdf').replace(/[\n\r\t]/g, '').slice(0, 100)
 
       const truncatedText = text.slice(0, 12000)
       const prompt = `Eres un experto en extractos bancarios colombianos (Bancolombia, Davivienda, BBVA, Nu, Rappi, Scotiabank, etc.).
@@ -186,7 +232,7 @@ REGLAS:
 - El nombre del banco debe ser el nombre comercial (ej: "Bancolombia", "Nu", "Rappi")
 - IMPORTANTE: "overdue_balance" es SOLO el monto vencido/en mora, NO confundir con el saldo total. Si el extracto no menciona mora explícitamente, usa 0
 
-NOMBRE DEL ARCHIVO: ${fileName || 'extracto.pdf'}
+NOMBRE DEL ARCHIVO: ${safeFileName}
 
 TEXTO DEL EXTRACTO:
 ${truncatedText}`
@@ -209,8 +255,12 @@ ${truncatedText}`
       const data = await response.json()
       if (!response.ok) throw new Error(data.error?.message || 'Error de Anthropic')
 
+      if (!data.content?.[0]?.text) {
+        return res.status(502).json({ error: 'Respuesta inesperada de la API' })
+      }
+
       const responseText = data.content[0].text
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+      const jsonMatch = responseText.match(/\{[\s\S]*?\}/)
       if (!jsonMatch) throw new Error('No se pudo extraer información del extracto')
 
       let parsed
@@ -242,10 +292,8 @@ ${truncatedText}`
         error: 'La importación desde Gmail requiere MCP y no está disponible en el servidor. Usa esta función desde el cliente con acceso MCP.'
       })
     }
-
-    return res.status(400).json({ error: 'Acción no válida' })
   } catch (error) {
     console.error('Anthropic API error:', error)
-    return res.status(500).json({ error: error.message })
+    return res.status(500).json({ error: 'Error interno del servidor. Intenta de nuevo.' })
   }
 }

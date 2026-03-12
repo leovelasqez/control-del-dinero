@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 export default function ScanReceiptModal({ onClose, onAdd }) {
   const [scanning, setScanning] = useState(false)
   const [result, setResult] = useState(null)
+  const [saving, setSaving] = useState(false)
   const fileRef = useRef(null)
 
   const handleFile = async (file) => {
@@ -43,16 +44,22 @@ export default function ScanReceiptModal({ onClose, onAdd }) {
     if (fileRef.current) fileRef.current.value = ''
   }
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!result || !result.amount || Number(result.amount) <= 0) return
-    onAdd({
-      date: result.date,
-      type: 'gasto',
-      category: result.category,
-      description: result.description,
-      amount: Number(result.amount)
-    })
-    onClose()
+    setSaving(true)
+    try {
+      const saved = await onAdd({
+        date: result.date,
+        type: 'gasto',
+        category: result.category,
+        description: result.description,
+        amount: Number(result.amount),
+        account: 'Efectivo'
+      })
+      if (saved) onClose()
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -112,7 +119,7 @@ export default function ScanReceiptModal({ onClose, onAdd }) {
             </div>
             <div className="flex gap-2 mt-2">
               <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setResult(null)}>Reintentar</button>
-              <button className="btn btn-success" style={{ flex: 1 }} onClick={handleConfirm}>Confirmar</button>
+              <button className="btn btn-success" style={{ flex: 1 }} onClick={handleConfirm} disabled={saving}>{saving ? 'Guardando...' : 'Confirmar'}</button>
             </div>
           </div>
         )}

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Download, FileText, Loader } from 'lucide-react'
-import * as XLSX from 'xlsx'
 import { formatCOP } from '../lib/constants'
 
 function escapeHtml(text) {
@@ -15,6 +14,7 @@ export default function ExportButtons({ onExportData, budgets, goals, debts }) {
   const exportExcel = async () => {
     setExporting(true)
     try {
+      const XLSX = await import('xlsx')
       const transactions = await onExportData()
       const wb = XLSX.utils.book_new()
 

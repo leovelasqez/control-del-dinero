@@ -6,6 +6,47 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
 
+function sanitizeAndFormatReport(text) {
+  // First escape ALL HTML to prevent XSS
+  const escaped = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+
+  // Then apply only safe markdown-like formatting (no attribute injection possible
+  // since all quotes and angle brackets are already escaped)
+  const formatted = escaped
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+
+  // Wrap consecutive <li> items in <ul> tags using a line-based approach
+  const lines = formatted.split('\n')
+  const result = []
+  let inList = false
+  for (const line of lines) {
+    const isListItem = line.trim().startsWith('<li>')
+    if (isListItem && !inList) {
+      result.push('<ul>')
+      inList = true
+    } else if (!isListItem && inList) {
+      result.push('</ul>')
+      inList = false
+    }
+    result.push(line)
+  }
+  if (inList) result.push('</ul>')
+
+  return result.join('\n')
+    .replace(/\n{2,}/g, '<br/><br/>')
+    .replace(/\n/g, '<br/>')
+}
+
 export default function AIReportPage({ budgets, goals, debts }) {
   const { user } = useAuth()
   const now = new Date()
@@ -140,19 +181,7 @@ export default function AIReportPage({ budgets, goals, debts }) {
       {report && (
         <div className="card">
           <div className="card-title">Reporte de {MONTHS[month - 1]} {year}</div>
-          <div className="report-content" dangerouslySetInnerHTML={{ __html: report
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.+?)\*/g, '<em>$1</em>')
-            .replace(/^### (.+)$/gm, '<h4>$1</h4>')
-            .replace(/^## (.+)$/gm, '<h3>$1</h3>')
-            .replace(/^# (.+)$/gm, '<h2>$1</h2>')
-            .replace(/^- (.+)$/gm, '<li>$1</li>')
-            .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
-            .replace(/<\/ul>\s*<ul>/g, '')
-            .replace(/\n{2,}/g, '<br/><br/>')
-            .replace(/\n/g, '<br/>')
-          }} />
+          <div className="report-content" dangerouslySetInnerHTML={{ __html: sanitizeAndFormatReport(report) }} />
         </div>
       )}
 

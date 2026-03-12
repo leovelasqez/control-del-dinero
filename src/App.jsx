@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback, lazy, Suspense } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { useAuth } from './hooks/useAuth'
 import { useTransactions } from './hooks/useTransactions'
@@ -12,17 +12,27 @@ import MonthlyChart from './components/MonthlyChart'
 import ExpensePieChart from './components/ExpensePieChart'
 import TransactionTable from './components/TransactionTable'
 import BudgetOverview from './components/BudgetOverview'
-import AddTransactionModal from './components/AddTransactionModal'
-import ScanReceiptModal from './components/ScanReceiptModal'
 import ExportButtons from './components/ExportButtons'
-import BudgetsPage from './pages/BudgetsPage'
-import GoalsPage from './pages/GoalsPage'
-import DebtsPage from './pages/DebtsPage'
-import HistoryPage from './pages/HistoryPage'
-import InvestmentPage from './pages/InvestmentPage'
-import AIReportPage from './pages/AIReportPage'
 import { useTheme } from './hooks/useTheme'
 import { Plus, Camera } from 'lucide-react'
+
+// Lazy load pages that are not shown on initial render
+const BudgetsPage = lazy(() => import('./pages/BudgetsPage'))
+const GoalsPage = lazy(() => import('./pages/GoalsPage'))
+const DebtsPage = lazy(() => import('./pages/DebtsPage'))
+const HistoryPage = lazy(() => import('./pages/HistoryPage'))
+const InvestmentPage = lazy(() => import('./pages/InvestmentPage'))
+const AIReportPage = lazy(() => import('./pages/AIReportPage'))
+
+// Lazy load modals — only loaded when user opens them
+const AddTransactionModal = lazy(() => import('./components/AddTransactionModal'))
+const ScanReceiptModal = lazy(() => import('./components/ScanReceiptModal'))
+
+const PageSpinner = () => (
+  <div style={{ padding: 40, textAlign: 'center' }}>
+    <div className="spinner" />
+  </div>
+)
 
 export default function App() {
   const { user, loading: authLoading, signOut } = useAuth()
@@ -50,6 +60,13 @@ export default function App() {
   const { goals, loading: goalsLoading, addGoal, addToGoal, updateGoal, deleteGoal } = useSavingsGoals()
   const { debts, loading: debtsLoading, addDebt, payDebt, updateDebt, deleteDebt } = useDebts()
 
+  const handleOpenIngreso = useCallback(() => setAddModalType('ingreso'), [])
+  const handleOpenGasto = useCallback(() => setAddModalType('gasto'), [])
+  const handleOpenScan = useCallback(() => setShowScanModal(true), [])
+  const handleCloseModal = useCallback(() => setAddModalType(null), [])
+  const handleCloseScan = useCallback(() => setShowScanModal(false), [])
+  const handleNavigateBudgets = useCallback(() => setActiveTab('budgets'), [])
+
   if (authLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
@@ -62,11 +79,7 @@ export default function App() {
     return <LoginPage />
   }
 
-  const topbarActions = (
-    <>
-      <ExportButtons onExportData={fetchAllForExport} budgets={budgets} goals={goals} debts={debts} />
-    </>
-  )
+  const topbarActions = <ExportButtons onExportData={fetchAllForExport} budgets={budgets} goals={goals} debts={debts} />
 
   return (
     <>
@@ -93,13 +106,13 @@ export default function App() {
                 <span className="welcome-greeting">Hola, {user.user_metadata?.full_name?.split(' ')[0] || 'usuario'}</span>
               </div>
               <div className="welcome-actions">
-                <button className="btn btn-success btn-sm" onClick={() => setAddModalType('ingreso')}>
+                <button className="btn btn-success btn-sm" onClick={handleOpenIngreso}>
                   <Plus size={14} /> Agregar ingreso
                 </button>
-                <button className="btn btn-danger btn-sm" onClick={() => setAddModalType('gasto')}>
+                <button className="btn btn-danger btn-sm" onClick={handleOpenGasto}>
                   <Plus size={14} /> Agregar gasto
                 </button>
-                <button className="btn btn-ghost btn-sm" onClick={() => setShowScanModal(true)}>
+                <button className="btn btn-ghost btn-sm" onClick={handleOpenScan}>
                   <Camera size={14} /> Escanear factura
                 </button>
               </div>
@@ -115,7 +128,7 @@ export default function App() {
             <BudgetOverview
               groupedBudgets={groupedBudgets}
               spentByCategory={spentByCategory}
-              onNavigate={() => setActiveTab('budgets')}
+              onNavigate={handleNavigateBudgets}
             />
 
             <TransactionTable
@@ -136,79 +149,83 @@ export default function App() {
           </div>
         )}
 
-        {activeTab === 'budgets' && (
-          <BudgetsPage
-            groupedBudgets={groupedBudgets}
-            spentByCategory={spentByCategory}
-            loading={budgetsLoading}
-            selectedMonth={selectedMonth}
-            setSelectedMonth={setSelectedMonth}
-            onAddItem={addBudgetItem}
-            onUpdateItem={updateBudgetItem}
-            onDeleteItem={deleteBudgetItem}
-            onDeleteCategory={deleteCategory}
-            onDuplicateMonth={duplicateMonth}
-            getAvailableMonths={getAvailableMonths}
-          />
-        )}
+        <Suspense fallback={<PageSpinner />}>
+          {activeTab === 'budgets' && (
+            <BudgetsPage
+              groupedBudgets={groupedBudgets}
+              spentByCategory={spentByCategory}
+              loading={budgetsLoading}
+              selectedMonth={selectedMonth}
+              setSelectedMonth={setSelectedMonth}
+              onAddItem={addBudgetItem}
+              onUpdateItem={updateBudgetItem}
+              onDeleteItem={deleteBudgetItem}
+              onDeleteCategory={deleteCategory}
+              onDuplicateMonth={duplicateMonth}
+              getAvailableMonths={getAvailableMonths}
+            />
+          )}
 
-        {activeTab === 'goals' && (
-          <GoalsPage
-            goals={goals}
-            loading={goalsLoading}
-            onAdd={addGoal}
-            onAddToGoal={addToGoal}
-            onUpdate={updateGoal}
-            onDelete={deleteGoal}
-          />
-        )}
+          {activeTab === 'goals' && (
+            <GoalsPage
+              goals={goals}
+              loading={goalsLoading}
+              onAdd={addGoal}
+              onAddToGoal={addToGoal}
+              onUpdate={updateGoal}
+              onDelete={deleteGoal}
+            />
+          )}
 
-        {activeTab === 'debts' && (
-          <DebtsPage
-            debts={debts}
-            loading={debtsLoading}
-            onAdd={addDebt}
-            onPay={payDebt}
-            onUpdate={updateDebt}
-            onDelete={deleteDebt}
-            onAddTransaction={addTransaction}
-          />
-        )}
+          {activeTab === 'debts' && (
+            <DebtsPage
+              debts={debts}
+              loading={debtsLoading}
+              onAdd={addDebt}
+              onPay={payDebt}
+              onUpdate={updateDebt}
+              onDelete={deleteDebt}
+              onAddTransaction={addTransaction}
+            />
+          )}
 
-        {activeTab === 'history' && (
-          <HistoryPage
-            monthlyData={summary?.history_monthly}
-            categoryData={summary?.history_categories}
-          />
-        )}
+          {activeTab === 'history' && (
+            <HistoryPage
+              monthlyData={summary?.history_monthly}
+              categoryData={summary?.history_categories}
+            />
+          )}
 
-        {activeTab === 'investment' && (
-          <InvestmentPage />
-        )}
+          {activeTab === 'investment' && (
+            <InvestmentPage />
+          )}
 
-        {activeTab === 'report' && (
-          <AIReportPage
-            budgets={budgets}
-            goals={goals}
-            debts={debts}
-          />
-        )}
+          {activeTab === 'report' && (
+            <AIReportPage
+              budgets={budgets}
+              goals={goals}
+              debts={debts}
+            />
+          )}
+        </Suspense>
       </Layout>
 
       {/* Modals */}
-      {addModalType && (
-        <AddTransactionModal
-          initialType={addModalType}
-          onClose={() => setAddModalType(null)}
-          onAdd={addTransaction}
-        />
-      )}
-      {showScanModal && (
-        <ScanReceiptModal
-          onClose={() => setShowScanModal(false)}
-          onAdd={addTransaction}
-        />
-      )}
+      <Suspense fallback={null}>
+        {addModalType && (
+          <AddTransactionModal
+            initialType={addModalType}
+            onClose={handleCloseModal}
+            onAdd={addTransaction}
+          />
+        )}
+        {showScanModal && (
+          <ScanReceiptModal
+            onClose={handleCloseScan}
+            onAdd={addTransaction}
+          />
+        )}
+      </Suspense>
     </>
   )
 }

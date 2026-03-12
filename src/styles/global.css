@@ -10,6 +10,7 @@
   --bg-primary: #0f172a;
   --bg-card: #1e293b;
   --bg-input: #334155;
+  --bg-topbar: rgba(15, 23, 42, 0.85);
   --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
@@ -31,6 +32,7 @@
   --bg-primary: #f1f5f9;
   --bg-card: #ffffff;
   --bg-input: #e2e8f0;
+  --bg-topbar: rgba(241, 245, 249, 0.85);
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-muted: #94a3b8;
@@ -53,6 +55,42 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
+}
+
+/* Focus visible - keyboard navigation indicator */
+:focus-visible {
+  outline: 2px solid var(--indigo);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Skip to content for accessibility */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 100;
+  padding: 8px 16px;
+  background: var(--indigo);
+  color: white;
+  border-radius: 0 0 8px 0;
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+
+.skip-to-content:focus {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: auto;
+  height: auto;
+  overflow: visible;
 }
 
 /* Scrollbar */
@@ -302,7 +340,9 @@ body {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: var(--bg-primary);
+  background: var(--bg-topbar);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
 }
 
 .topbar-left {
@@ -826,7 +866,7 @@ td {
   border-bottom: 1px solid var(--border);
 }
 
-tr:hover {
+tbody tr:hover {
   background: var(--overlay-soft);
 }
 
@@ -915,6 +955,7 @@ tr:hover {
   display: flex;
   gap: 4px;
   margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 
 .filter-tab {
@@ -925,6 +966,13 @@ tr:hover {
   color: var(--text-secondary);
   cursor: pointer;
   font-size: 0.8rem;
+  transition: background 0.2s, color 0.2s;
+  white-space: nowrap;
+}
+
+.filter-tab:hover:not(.active) {
+  background: var(--overlay-softer);
+  color: var(--text-primary);
 }
 
 .filter-tab.active {
@@ -1063,7 +1111,60 @@ tr:hover {
     margin-left: 0;
   }
 
+  .layout.sidebar-collapsed .layout-main {
+    margin-left: 0;
+  }
+
   .hamburger-btn {
     display: flex;
+  }
+}
+
+@media (max-width: 768px) {
+  .layout-content {
+    padding: 16px;
+  }
+
+  .topbar {
+    padding: 12px 16px;
+  }
+
+  .topbar-actions {
+    gap: 4px;
+  }
+
+  .tx-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .modal-content {
+    padding: 20px;
+    margin: 8px;
+    max-height: calc(100vh - 32px);
+  }
+
+  .card {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .layout-content {
+    padding: 12px;
+  }
+
+  .btn-sm {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+  }
+
+  .kpi-card {
+    padding: 16px;
+    min-height: auto;
+  }
+
+  .kpi-card .value {
+    font-size: 1.15rem;
   }
 }

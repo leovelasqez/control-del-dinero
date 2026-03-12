@@ -18,6 +18,8 @@ export default function Layout({ activeTab, setActiveTab, user, signOut, theme, 
 
   return (
     <div className={`layout ${collapsed ? 'sidebar-collapsed' : ''}`}>
+      <a href="#main-content" className="skip-to-content">Ir al contenido principal</a>
+
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -38,20 +40,26 @@ export default function Layout({ activeTab, setActiveTab, user, signOut, theme, 
         <div
           className="sidebar-overlay visible"
           onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       <div className="layout-main">
-        <header className="topbar">
+        <header className="topbar" role="banner">
           <div className="topbar-left">
             {isMobile ? (
-              <button className="hamburger-btn" onClick={() => setMobileOpen(true)}>
+              <button
+                className="hamburger-btn"
+                onClick={() => setMobileOpen(true)}
+                aria-label="Abrir menu de navegacion"
+              >
                 <Menu size={20} />
               </button>
             ) : (
               <button
                 className="sidebar-toggle-btn"
                 onClick={() => setCollapsed(c => !c)}
+                aria-label={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
                 title={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
               >
                 {collapsed ? <PanelLeft size={20} /> : <PanelLeftClose size={20} />}
@@ -69,7 +77,7 @@ export default function Layout({ activeTab, setActiveTab, user, signOut, theme, 
           </div>
         </header>
 
-        <main className="layout-content">
+        <main id="main-content" className="layout-content">
           {children}
         </main>
       </div>

@@ -36,7 +36,6 @@ export function useBudgets() {
 
   const fetchSpent = useCallback(async () => {
     if (!user) return
-    const now = new Date()
     const [year, month] = selectedMonth.split('-')
     const startDate = `${year}-${month}-01`
     const nextMonth = Number(month) === 12
