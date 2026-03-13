@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { TrendingUp, TrendingDown, ClipboardList, PiggyBank } from 'lucide-react'
 import { formatCOP } from '../lib/constants'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function KPICards({ summary, budgets = [] }) {
   const stats = useMemo(() => {
@@ -32,61 +33,63 @@ export default function KPICards({ summary, budgets = [] }) {
     {
       label: 'Ingresos',
       value: formatCOP(stats.income),
-      valueClass: 'green',
+      color: 'text-green-500',
+      iconBg: 'bg-green-500/15 text-green-500',
       icon: TrendingUp,
-      iconClass: 'kpi-icon-income',
       trend: incomeTrend,
       trendInverted: false
     },
     {
       label: 'Gastos',
       value: formatCOP(stats.expenses),
-      valueClass: 'red',
+      color: 'text-red-500',
+      iconBg: 'bg-red-500/15 text-red-500',
       icon: TrendingDown,
-      iconClass: 'kpi-icon-expense',
       trend: expenseTrend,
       trendInverted: true
     },
     {
       label: 'Presupuesto del mes',
       value: formatCOP(totalBudget),
-      valueClass: totalBudget > 0 ? 'blue' : 'gray',
+      color: totalBudget > 0 ? 'text-blue-500' : 'text-muted-foreground',
+      iconBg: 'bg-blue-500/15 text-blue-500',
       icon: ClipboardList,
-      iconClass: 'kpi-icon-budget',
       trend: null,
       trendInverted: false
     },
     {
       label: 'Por asignar',
       value: formatCOP(porAsignar),
-      valueClass: porAsignar >= 0 ? 'green' : 'red',
+      color: porAsignar >= 0 ? 'text-green-500' : 'text-red-500',
+      iconBg: 'bg-indigo-500/15 text-indigo-500',
       icon: PiggyBank,
-      iconClass: 'kpi-icon-available',
       trend: null,
       trendInverted: false
     }
   ]
 
   return (
-    <div className="kpi-grid">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {cards.map(card => {
         const Icon = card.icon
         const trendUp = card.trendInverted ? card.trend <= 0 : card.trend >= 0
         return (
-          <div key={card.label} className="kpi-card">
-            <div className="kpi-card-header">
-              <div className="label">{card.label}</div>
-              <div className={`kpi-icon-wrap ${card.iconClass}`}>
-                <Icon size={16} />
+          <Card key={card.label}>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">{card.label}</CardTitle>
+              <div className={`size-8 rounded-md flex items-center justify-center ${card.iconBg}`}>
+                <Icon className="size-4" />
               </div>
-            </div>
-            <div className={`value ${card.valueClass}`}>{card.value}</div>
-            {card.trend !== null && (
-              <div className={`kpi-trend ${trendUp ? 'trend-up' : 'trend-down'}`}>
-                {trendUp ? '↗' : '↘'} {card.trend >= 0 ? '+' : ''}{card.trend.toFixed(0)}% vs mes anterior
-              </div>
-            )}
-          </div>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${card.color}`}>{card.value}</div>
+              {card.trend !== null && (
+                <p className={`text-xs mt-1 ${trendUp ? 'text-green-500' : 'text-red-500'}`}>
+                  {trendUp ? '↗' : '↘'} {card.trend >= 0 ? '+' : ''}{card.trend.toFixed(0)}% vs mes anterior
+                </p>
+              )}
+            </CardContent>
+          </Card>
         )
       })}
     </div>

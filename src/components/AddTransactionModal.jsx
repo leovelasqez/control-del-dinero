@@ -1,6 +1,10 @@
 import { useState } from 'react'
-import { X } from 'lucide-react'
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, ACCOUNT_OPTIONS } from '../lib/constants'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export default function AddTransactionModal({ onClose, onAdd, initialType = 'gasto' }) {
   const [form, setForm] = useState({
@@ -12,10 +16,9 @@ export default function AddTransactionModal({ onClose, onAdd, initialType = 'gas
     account: 'Efectivo'
   })
   const [customAccount, setCustomAccount] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const categories = form.type === 'gasto' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES
-
-  const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -38,49 +41,44 @@ export default function AddTransactionModal({ onClose, onAdd, initialType = 'gas
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-4">
-          <h2>{form.type === 'ingreso' ? 'Agregar Ingreso' : 'Agregar Gasto'}</h2>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}><X size={18} /></button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Fecha</label>
-            <input
+    <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{form.type === 'ingreso' ? 'Agregar Ingreso' : 'Agregar Gasto'}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label>Fecha</Label>
+            <Input
               type="date"
-              className="form-input"
               value={form.date}
               onChange={e => setForm({ ...form, date: e.target.value })}
               required
             />
           </div>
-          <div className="form-group">
-            <label>Categoria</label>
-            <select
-              className="form-input"
-              value={form.category}
-              onChange={e => setForm({ ...form, category: e.target.value })}
-            >
-              {categories.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+          <div className="space-y-2">
+            <Label>Categoria</Label>
+            <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
-          <div className="form-group">
-            <label>Cuenta</label>
-            <select
-              className="form-input"
-              value={form.account}
-              onChange={e => setForm({ ...form, account: e.target.value })}
-            >
-              {ACCOUNT_OPTIONS.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
+          <div className="space-y-2">
+            <Label>Cuenta</Label>
+            <Select value={form.account} onValueChange={v => setForm({ ...form, account: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {ACCOUNT_OPTIONS.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           {form.account === 'Otra' && (
-            <div className="form-group">
-              <label>Nombre de la cuenta</label>
-              <input
+            <div className="space-y-2">
+              <Label>Nombre de la cuenta</Label>
+              <Input
                 type="text"
-                className="form-input"
                 placeholder="Ej: Nequi, Daviplata..."
                 value={customAccount}
                 onChange={e => setCustomAccount(e.target.value)}
@@ -88,21 +86,19 @@ export default function AddTransactionModal({ onClose, onAdd, initialType = 'gas
               />
             </div>
           )}
-          <div className="form-group">
-            <label>Descripcion</label>
-            <input
+          <div className="space-y-2">
+            <Label>Descripcion</Label>
+            <Input
               type="text"
-              className="form-input"
               placeholder="Ej: Almuerzo en restaurante"
               value={form.description}
               onChange={e => setForm({ ...form, description: e.target.value })}
             />
           </div>
-          <div className="form-group">
-            <label>Monto (COP)</label>
-            <input
+          <div className="space-y-2">
+            <Label>Monto (COP)</Label>
+            <Input
               type="number"
-              className="form-input"
               placeholder="0"
               min="1"
               value={form.amount}
@@ -110,11 +106,15 @@ export default function AddTransactionModal({ onClose, onAdd, initialType = 'gas
               required
             />
           </div>
-          <button type="submit" className={`btn ${form.type === 'ingreso' ? 'btn-success' : 'btn-danger'} w-full mt-2`} disabled={submitting}>
+          <Button
+            type="submit"
+            className={`w-full ${form.type === 'ingreso' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+            disabled={submitting}
+          >
             {submitting ? 'Guardando...' : 'Agregar'}
-          </button>
+          </Button>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

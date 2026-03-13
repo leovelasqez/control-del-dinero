@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Download, FileText, Loader } from 'lucide-react'
+import { Download, FileText, Loader2 } from 'lucide-react'
 import { formatCOP } from '../lib/constants'
+import { Button } from '@/components/ui/button'
 
 function escapeHtml(text) {
   const div = document.createElement('div')
@@ -120,12 +121,12 @@ export default function ExportButtons({ onExportData, budgets, goals, debts }) {
 
   return (
     <div className="flex gap-2">
-      <button className="btn btn-ghost btn-sm" onClick={exportExcel} disabled={exporting}>
-        {exporting ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Download size={14} />} Excel
-      </button>
-      <button className="btn btn-ghost btn-sm" onClick={exportPDF} disabled={exporting}>
-        {exporting ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <FileText size={14} />} PDF
-      </button>
+      <Button variant="ghost" size="sm" onClick={exportExcel} disabled={exporting}>
+        {exporting ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />} Excel
+      </Button>
+      <Button variant="ghost" size="sm" onClick={exportPDF} disabled={exporting}>
+        {exporting ? <Loader2 className="size-3.5 animate-spin" /> : <FileText className="size-3.5" />} PDF
+      </Button>
     </div>
   )
 }

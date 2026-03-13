@@ -3,6 +3,13 @@ import { Trash2, Pencil, Search, ChevronLeft, ChevronRight, Filter } from 'lucid
 import { formatCOP, CATEGORY_EMOJIS } from '../lib/constants'
 import EditTransactionModal from './EditTransactionModal'
 import ConfirmDialog from './ConfirmDialog'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Loader2 } from 'lucide-react'
 
 export default function TransactionTable({
   transactions, totalCount, page, setPage, pageSize,
@@ -28,136 +35,120 @@ export default function TransactionTable({
   }
 
   return (
-    <div className="card mt-4">
-      <div className="tx-header">
-        <div className="tx-header-left">
-          <div className="card-title" style={{ marginBottom: 0 }}>Transacciones</div>
-          <div className="tx-summary">
-            <span className="tx-summary-income">+{formatCOP(totalIncome)}</span>
-            <span className="tx-summary-expense">-{formatCOP(totalExpenses)}</span>
-          </div>
-        </div>
-        <div className="flex gap-2 items-center" style={{ flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative' }}>
-            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input
-              type="text"
-              className="form-input"
-              placeholder="Buscar transacciones..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{ paddingLeft: 32, width: 220, marginBottom: 0 }}
-            />
-          </div>
-          <div className="filter-tabs" style={{ marginBottom: 0 }}>
-            <Filter size={13} style={{ color: 'var(--text-muted)', marginRight: 4, flexShrink: 0, alignSelf: 'center' }} />
-            {['todas', 'ingresos', 'gastos'].map(f => (
-              <button
-                key={f}
-                className={`filter-tab ${filter === f ? 'active' : ''}`}
-                onClick={() => setFilter(f)}
-              >
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {loading ? (
-        <div style={{ padding: 40, textAlign: 'center' }}>
-          <div className="spinner" />
-        </div>
-      ) : (
-        <>
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Tipo</th>
-                  <th>Categoria</th>
-                  <th>Cuenta</th>
-                  <th>Descripcion</th>
-                  <th>Monto</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center text-muted" style={{ padding: 24 }}>
-                      {search ? 'Sin resultados para la busqueda' : 'No hay transacciones'}
-                    </td>
-                  </tr>
-                ) : (
-                  transactions.map(t => (
-                    <tr key={t.id}>
-                      <td>{new Date(t.date).toLocaleDateString('es-CO')}</td>
-                      <td>
-                        <span className={`badge ${t.type === 'ingreso' ? 'badge-green' : 'badge-red'}`}>
-                          {t.type}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="tx-category-emoji">{CATEGORY_EMOJIS[t.category] || '📦'}</span>
-                        {t.category}
-                      </td>
-                      <td>{t.account || 'Efectivo'}</td>
-                      <td>{t.description}</td>
-                      <td className={t.type === 'ingreso' ? 'text-green' : 'text-red'}>
-                        {t.type === 'ingreso' ? '+' : '-'}{formatCOP(t.amount)}
-                      </td>
-                      <td>
-                        <div className="flex gap-2">
-                          <button
-                            className="btn btn-ghost btn-sm"
-                            onClick={() => setEditing(t)}
-                            title="Editar"
-                          >
-                            <Pencil size={14} />
-                          </button>
-                          <button
-                            className="btn btn-ghost btn-sm"
-                            onClick={() => setConfirmDelete(t)}
-                            title="Eliminar"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {totalCount > pageSize && (
-            <div className="flex justify-between items-center mt-4">
-              <span className="text-xs text-muted">
-                {totalCount} transacciones — Pagina {page} de {totalPages}
-              </span>
-              <div className="flex gap-2">
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                >
-                  <ChevronLeft size={14} />
-                </button>
-                <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                >
-                  <ChevronRight size={14} />
-                </button>
-              </div>
+    <Card className="mt-4">
+      <CardHeader>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <CardTitle>Transacciones</CardTitle>
+            <div className="flex gap-3 mt-1">
+              <span className="text-sm font-medium text-green-500">+{formatCOP(totalIncome)}</span>
+              <span className="text-sm font-medium text-red-500">-{formatCOP(totalExpenses)}</span>
             </div>
-          )}
-        </>
-      )}
+          </div>
+          <div className="flex gap-2 items-center flex-wrap">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Buscar transacciones..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-8 w-[220px] h-8"
+              />
+            </div>
+            <div className="flex items-center gap-1">
+              <Filter className="size-3.5 text-muted-foreground" />
+              <ToggleGroup type="single" value={filter} onValueChange={(v) => v && setFilter(v)} size="sm">
+                {['todas', 'ingresos', 'gastos'].map(f => (
+                  <ToggleGroupItem key={f} value={f}>
+                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Cuenta</TableHead>
+                    <TableHead>Descripcion</TableHead>
+                    <TableHead>Monto</TableHead>
+                    <TableHead className="w-[80px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {transactions.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
+                        {search ? 'Sin resultados para la busqueda' : 'No hay transacciones'}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    transactions.map(t => (
+                      <TableRow key={t.id}>
+                        <TableCell className="whitespace-nowrap">{new Date(t.date).toLocaleDateString('es-CO')}</TableCell>
+                        <TableCell>
+                          <Badge variant={t.type === 'ingreso' ? 'default' : 'destructive'} className={t.type === 'ingreso' ? 'bg-green-500/15 text-green-600 hover:bg-green-500/20 border-0' : 'bg-red-500/15 text-red-600 hover:bg-red-500/20 border-0'}>
+                            {t.type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className="mr-1">{CATEGORY_EMOJIS[t.category] || '📦'}</span>
+                          {t.category}
+                        </TableCell>
+                        <TableCell>{t.account || 'Efectivo'}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">{t.description}</TableCell>
+                        <TableCell className={`font-medium tabular-nums ${t.type === 'ingreso' ? 'text-green-500' : 'text-red-500'}`}>
+                          {t.type === 'ingreso' ? '+' : '-'}{formatCOP(t.amount)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="size-7" onClick={() => setEditing(t)} title="Editar">
+                              <Pencil className="size-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="size-7" onClick={() => setConfirmDelete(t)} title="Eliminar">
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {totalCount > pageSize && (
+              <div className="flex justify-between items-center mt-4">
+                <span className="text-xs text-muted-foreground">
+                  {totalCount} transacciones — Pagina {page} de {totalPages}
+                </span>
+                <div className="flex gap-1">
+                  <Button variant="outline" size="icon" className="size-7" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>
+                    <ChevronLeft className="size-3.5" />
+                  </Button>
+                  <Button variant="outline" size="icon" className="size-7" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>
+                    <ChevronRight className="size-3.5" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
 
       {editing && (
         <EditTransactionModal
@@ -174,6 +165,6 @@ export default function TransactionTable({
           onCancel={() => setConfirmDelete(null)}
         />
       )}
-    </div>
+    </Card>
   )
 }

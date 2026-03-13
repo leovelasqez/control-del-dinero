@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 export function useSavingsGoals() {
   const { user } = useAuth()

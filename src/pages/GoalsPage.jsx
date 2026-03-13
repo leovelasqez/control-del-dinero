@@ -1,7 +1,15 @@
 import { useState } from 'react'
-import { Plus, Trash2, Target, Pencil, X } from 'lucide-react'
+import { Plus, Trash2, Target, Pencil } from 'lucide-react'
 import { formatCOP } from '../lib/constants'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Loader2 } from 'lucide-react'
 
 export default function GoalsPage({ goals, loading, onAdd, onAddToGoal, onUpdate, onDelete }) {
   const [showForm, setShowForm] = useState(false)
@@ -47,55 +55,61 @@ export default function GoalsPage({ goals, loading, onAdd, onAddToGoal, onUpdate
   const quickAmounts = [50000, 100000, 200000]
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2>Metas de Ahorro</h2>
-        <button className="btn btn-primary btn-sm" onClick={() => setShowForm(true)}>
-          <Plus size={14} /> Nueva meta
-        </button>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-bold">Metas de Ahorro</h2>
+        <Button size="sm" className="gap-1" onClick={() => setShowForm(true)}>
+          <Plus className="size-3.5" /> Nueva meta
+        </Button>
       </div>
 
       {showForm && (
-        <div className="card mb-4">
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label>Nombre de la meta</label>
-              <input type="text" className="form-input" placeholder="Ej: Vacaciones" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
-            </div>
-            <div className="flex gap-3" style={{ flexWrap: 'wrap' }}>
-              <div className="form-group" style={{ flex: 1, minWidth: 150 }}>
-                <label>Monto objetivo (COP)</label>
-                <input type="number" className="form-input" value={form.target_amount} onChange={e => setForm({ ...form, target_amount: e.target.value })} min="1" required />
+        <Card>
+          <CardContent className="pt-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Nombre de la meta</Label>
+                <Input placeholder="Ej: Vacaciones" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
               </div>
-              <div className="form-group" style={{ flex: 1, minWidth: 150 }}>
-                <label>Ya ahorrado (COP)</label>
-                <input type="number" className="form-input" value={form.current_amount} onChange={e => setForm({ ...form, current_amount: e.target.value })} min="0" />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-2">
+                  <Label>Monto objetivo (COP)</Label>
+                  <Input type="number" value={form.target_amount} onChange={e => setForm({ ...form, target_amount: e.target.value })} min="1" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Ya ahorrado (COP)</Label>
+                  <Input type="number" value={form.current_amount} onChange={e => setForm({ ...form, current_amount: e.target.value })} min="0" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Fecha limite</Label>
+                  <Input type="date" value={form.deadline} onChange={e => setForm({ ...form, deadline: e.target.value })} />
+                </div>
               </div>
-              <div className="form-group" style={{ flex: 1, minWidth: 150 }}>
-                <label>Fecha limite</label>
-                <input type="date" className="form-input" value={form.deadline} onChange={e => setForm({ ...form, deadline: e.target.value })} />
+              <div className="flex gap-2">
+                <Button type="submit" size="sm" className="bg-green-600 hover:bg-green-700">Crear meta</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowForm(false)}>Cancelar</Button>
               </div>
-            </div>
-            <div className="flex gap-2">
-              <button type="submit" className="btn btn-success btn-sm">Crear meta</button>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowForm(false)}>Cancelar</button>
-            </div>
-          </form>
-        </div>
+            </form>
+          </CardContent>
+        </Card>
       )}
 
       {loading && (
-        <div style={{ padding: 40, textAlign: 'center' }}><div className="spinner" /></div>
-      )}
-
-      {!loading && goals.length === 0 && !showForm && (
-        <div className="card text-center" style={{ padding: 40 }}>
-          <Target size={40} style={{ color: 'var(--text-muted)', margin: '0 auto 12px' }} />
-          <p className="text-muted">No tienes metas de ahorro.</p>
+        <div className="flex items-center justify-center py-10">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
       )}
 
-      <div className="grid-2">
+      {!loading && goals.length === 0 && !showForm && (
+        <Card>
+          <CardContent className="text-center py-10">
+            <Target className="size-10 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground">No tienes metas de ahorro.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {goals.map(g => {
           const target = Number(g.target_amount)
           const current = Number(g.current_amount)
@@ -109,82 +123,81 @@ export default function GoalsPage({ goals, loading, onAdd, onAddToGoal, onUpdate
           }
 
           return (
-            <div key={g.id} className="card">
-              <div className="flex justify-between items-center mb-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span style={{ fontWeight: 600 }}>{g.name}</span>
-                    {achieved && <span className="badge badge-green">Lograda</span>}
+            <Card key={g.id}>
+              <CardContent className="pt-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{g.name}</span>
+                      {achieved && <Badge className="bg-green-500/15 text-green-600 border-0">Lograda</Badge>}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {formatCOP(current)} de {formatCOP(target)}
+                    </div>
                   </div>
-                  <div className="text-xs text-muted mt-2">
-                    {formatCOP(current)} de {formatCOP(target)}
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="size-7" onClick={() => handleEdit(g)} title="Editar">
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="size-7" onClick={() => setConfirmDelete(g)} title="Eliminar">
+                      <Trash2 className="size-3.5" />
+                    </Button>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button className="btn btn-ghost btn-sm" onClick={() => handleEdit(g)} title="Editar">
-                    <Pencil size={14} />
-                  </button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(g)} title="Eliminar">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
 
-              <div className="progress-bar">
-                <div className="progress-fill" style={{ width: `${Math.min(pct, 100)}%`, background: achieved ? '#22c55e' : '#6366f1' }} />
-              </div>
+                <Progress value={Math.min(pct, 100)} className="h-2" />
 
-              <div className="flex justify-between mt-2">
-                <span className="text-xs" style={{ color: achieved ? '#22c55e' : '#6366f1' }}>
-                  {pct.toFixed(0)}%
-                </span>
-                {daysLeft !== null && (
-                  <span className={`text-xs ${daysLeft < 30 ? 'text-red' : 'text-muted'}`}>
-                    {daysLeft > 0 ? `${daysLeft} dias restantes` : 'Plazo vencido'}
+                <div className="flex justify-between mt-2">
+                  <span className={`text-xs font-medium ${achieved ? 'text-green-500' : 'text-indigo-500'}`}>
+                    {pct.toFixed(0)}%
                   </span>
-                )}
-              </div>
-
-              {!achieved && (
-                <div className="flex gap-2 mt-4">
-                  {quickAmounts.map(amt => (
-                    <button key={amt} className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => onAddToGoal(g.id, amt)}>
-                      +{(amt / 1000).toFixed(0)}k
-                    </button>
-                  ))}
+                  {daysLeft !== null && (
+                    <span className={`text-xs ${daysLeft < 30 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                      {daysLeft > 0 ? `${daysLeft} dias restantes` : 'Plazo vencido'}
+                    </span>
+                  )}
                 </div>
-              )}
-            </div>
+
+                {!achieved && (
+                  <div className="flex gap-2 mt-4">
+                    {quickAmounts.map(amt => (
+                      <Button key={amt} variant="outline" size="sm" className="flex-1" onClick={() => onAddToGoal(g.id, amt)}>
+                        +{(amt / 1000).toFixed(0)}k
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           )
         })}
       </div>
 
       {editing && (
-        <div className="modal-overlay" onClick={() => setEditing(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4">
-              <h2>Editar Meta</h2>
-              <button className="btn btn-ghost btn-sm" onClick={() => setEditing(null)}><X size={18} /></button>
+        <Dialog open onOpenChange={(open) => { if (!open) setEditing(null) }}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Editar Meta</DialogTitle></DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Nombre de la meta</Label>
+                <Input value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} required />
+              </div>
+              <div className="space-y-2">
+                <Label>Monto objetivo (COP)</Label>
+                <Input type="number" value={editForm.target_amount} onChange={e => setEditForm({ ...editForm, target_amount: e.target.value })} min="1" required />
+              </div>
+              <div className="space-y-2">
+                <Label>Monto ahorrado (COP)</Label>
+                <Input type="number" value={editForm.current_amount} onChange={e => setEditForm({ ...editForm, current_amount: e.target.value })} min="0" />
+              </div>
+              <div className="space-y-2">
+                <Label>Fecha limite</Label>
+                <Input type="date" value={editForm.deadline} onChange={e => setEditForm({ ...editForm, deadline: e.target.value })} />
+              </div>
+              <Button className="w-full" onClick={handleSaveEdit}>Guardar cambios</Button>
             </div>
-            <div className="form-group">
-              <label>Nombre de la meta</label>
-              <input type="text" className="form-input" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} required />
-            </div>
-            <div className="form-group">
-              <label>Monto objetivo (COP)</label>
-              <input type="number" className="form-input" value={editForm.target_amount} onChange={e => setEditForm({ ...editForm, target_amount: e.target.value })} min="1" required />
-            </div>
-            <div className="form-group">
-              <label>Monto ahorrado (COP)</label>
-              <input type="number" className="form-input" value={editForm.current_amount} onChange={e => setEditForm({ ...editForm, current_amount: e.target.value })} min="0" />
-            </div>
-            <div className="form-group">
-              <label>Fecha limite</label>
-              <input type="date" className="form-input" value={editForm.deadline} onChange={e => setEditForm({ ...editForm, deadline: e.target.value })} />
-            </div>
-            <button className="btn btn-primary w-full mt-2" onClick={handleSaveEdit}>Guardar cambios</button>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {confirmDelete && (

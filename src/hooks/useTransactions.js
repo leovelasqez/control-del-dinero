@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 const PAGE_SIZE = 10
 const SEARCH_DEBOUNCE_MS = 300

@@ -1,9 +1,14 @@
 import { useState, useRef } from 'react'
-import { X, Camera, Upload, Loader } from 'lucide-react'
+import { Camera, Upload, Loader2 } from 'lucide-react'
 import { EXPENSE_CATEGORIES } from '../lib/constants'
 import { compressImage } from '../lib/compressImage'
 import { scanReceipt } from '../api/anthropic'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 export default function ScanReceiptModal({ onClose, onAdd }) {
   const [scanning, setScanning] = useState(false)
@@ -63,12 +68,11 @@ export default function ScanReceiptModal({ onClose, onAdd }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-4">
-          <h2>Escanear Recibo</h2>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}><X size={18} /></button>
-        </div>
+    <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Escanear Recibo</DialogTitle>
+        </DialogHeader>
 
         {!result && !scanning && (
           <div className="flex flex-col gap-3">
@@ -77,53 +81,58 @@ export default function ScanReceiptModal({ onClose, onAdd }) {
               type="file"
               accept="image/*"
               capture="environment"
-              style={{ display: 'none' }}
+              className="hidden"
               onChange={e => handleFile(e.target.files[0])}
             />
-            <button className="btn btn-primary w-full" onClick={() => { fileRef.current.setAttribute('capture', 'environment'); fileRef.current.click() }}>
-              <Camera size={18} /> Tomar foto
-            </button>
-            <button className="btn btn-ghost w-full" onClick={() => { fileRef.current.removeAttribute('capture'); fileRef.current.click() }}>
-              <Upload size={18} /> Subir imagen
-            </button>
+            <Button className="w-full gap-2" onClick={() => { fileRef.current.setAttribute('capture', 'environment'); fileRef.current.click() }}>
+              <Camera className="size-4" /> Tomar foto
+            </Button>
+            <Button variant="outline" className="w-full gap-2" onClick={() => { fileRef.current.removeAttribute('capture'); fileRef.current.click() }}>
+              <Upload className="size-4" /> Subir imagen
+            </Button>
           </div>
         )}
 
         {scanning && (
-          <div className="text-center" style={{ padding: 32 }}>
-            <Loader size={32} className="spinner" style={{ margin: '0 auto 16px', border: 'none', animation: 'spin 1s linear infinite' }} />
-            <p className="text-muted">Analizando recibo con IA...</p>
+          <div className="text-center py-8">
+            <Loader2 className="size-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground">Analizando recibo con IA...</p>
           </div>
         )}
 
         {result && (
-          <div>
-            <p className="text-sm text-muted mb-4">Verifica los datos extraidos:</p>
-            <div className="form-group">
-              <label>Fecha</label>
-              <input type="date" className="form-input" value={result.date} onChange={e => setResult({ ...result, date: e.target.value })} />
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">Verifica los datos extraidos:</p>
+            <div className="space-y-2">
+              <Label>Fecha</Label>
+              <Input type="date" value={result.date} onChange={e => setResult({ ...result, date: e.target.value })} />
             </div>
-            <div className="form-group">
-              <label>Categoria</label>
-              <select className="form-input" value={result.category} onChange={e => setResult({ ...result, category: e.target.value })}>
-                {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+            <div className="space-y-2">
+              <Label>Categoria</Label>
+              <Select value={result.category} onValueChange={v => setResult({ ...result, category: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {EXPENSE_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="form-group">
-              <label>Descripcion</label>
-              <input type="text" className="form-input" value={result.description} onChange={e => setResult({ ...result, description: e.target.value })} />
+            <div className="space-y-2">
+              <Label>Descripcion</Label>
+              <Input type="text" value={result.description} onChange={e => setResult({ ...result, description: e.target.value })} />
             </div>
-            <div className="form-group">
-              <label>Monto (COP)</label>
-              <input type="number" className="form-input" value={result.amount} onChange={e => setResult({ ...result, amount: e.target.value })} />
+            <div className="space-y-2">
+              <Label>Monto (COP)</Label>
+              <Input type="number" value={result.amount} onChange={e => setResult({ ...result, amount: e.target.value })} />
             </div>
-            <div className="flex gap-2 mt-2">
-              <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setResult(null)}>Reintentar</button>
-              <button className="btn btn-success" style={{ flex: 1 }} onClick={handleConfirm} disabled={saving}>{saving ? 'Guardando...' : 'Confirmar'}</button>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setResult(null)}>Reintentar</Button>
+              <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={handleConfirm} disabled={saving}>
+                {saving ? 'Guardando...' : 'Confirmar'}
+              </Button>
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

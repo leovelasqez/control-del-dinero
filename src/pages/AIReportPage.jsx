@@ -1,13 +1,17 @@
 import { useState } from 'react'
-import { Bot, Loader } from 'lucide-react'
+import { Bot, Loader2 } from 'lucide-react'
 import { generateMonthlyReport } from '../api/anthropic'
 import { MONTHS } from '../lib/constants'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 function sanitizeAndFormatReport(text) {
-  // First escape ALL HTML to prevent XSS
   const escaped = text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -15,8 +19,6 @@ function sanitizeAndFormatReport(text) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;')
 
-  // Then apply only safe markdown-like formatting (no attribute injection possible
-  // since all quotes and angle brackets are already escaped)
   const formatted = escaped
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
@@ -25,7 +27,6 @@ function sanitizeAndFormatReport(text) {
     .replace(/^# (.+)$/gm, '<h2>$1</h2>')
     .replace(/^- (.+)$/gm, '<li>$1</li>')
 
-  // Wrap consecutive <li> items in <ul> tags using a line-based approach
   const lines = formatted.split('\n')
   const result = []
   let inList = false
@@ -50,7 +51,7 @@ function sanitizeAndFormatReport(text) {
 export default function AIReportPage({ budgets, goals, debts }) {
   const { user } = useAuth()
   const now = new Date()
-  const [month, setMonth] = useState(now.getMonth() + 1)
+  const [month, setMonth] = useState(String(now.getMonth() + 1))
   const [year, setYear] = useState(now.getFullYear())
   const [report, setReport] = useState('')
   const [loading, setLoading] = useState(false)
@@ -59,10 +60,11 @@ export default function AIReportPage({ budgets, goals, debts }) {
     setLoading(true)
     setReport('')
 
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01`
-    const endDate = month === 12
+    const monthNum = Number(month)
+    const startDate = `${year}-${String(monthNum).padStart(2, '0')}-01`
+    const endDate = monthNum === 12
       ? `${year + 1}-01-01`
-      : `${year}-${String(month + 1).padStart(2, '0')}-01`
+      : `${year}-${String(monthNum + 1).padStart(2, '0')}-01`
 
     const { data: monthTx, error } = await supabase
       .from('transactions')
@@ -79,7 +81,7 @@ export default function AIReportPage({ budgets, goals, debts }) {
     }
 
     if (monthTx.length === 0) {
-      toast.error(`No hay transacciones en ${MONTHS[month - 1]} ${year}`)
+      toast.error(`No hay transacciones en ${MONTHS[monthNum - 1]} ${year}`)
       setLoading(false)
       return
     }
@@ -139,7 +141,7 @@ export default function AIReportPage({ budgets, goals, debts }) {
         budgets: budgetSummary,
         goals: goalSummary,
         debts: debtSummary,
-        month,
+        month: monthNum,
         year
       })
       setReport(data.report)
@@ -150,47 +152,63 @@ export default function AIReportPage({ budgets, goals, debts }) {
   }
 
   return (
-    <div>
-      <h2 className="mb-4">Reporte Mensual con IA</h2>
+    <div className="space-y-4">
+      <h2 className="text-xl font-bold">Reporte Mensual con IA</h2>
 
-      <div className="card mb-4">
-        <div className="flex gap-3 items-end" style={{ flexWrap: 'wrap' }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Mes</label>
-            <select className="form-input" value={month} onChange={e => setMonth(Number(e.target.value))}>
-              {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-            </select>
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="space-y-2">
+              <Label>Mes</Label>
+              <Select value={month} onValueChange={setMonth}>
+                <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {MONTHS.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Ano</Label>
+              <Input type="number" className="w-[100px]" value={year} onChange={e => setYear(Number(e.target.value))} min="2020" max="2030" />
+            </div>
+            <Button size="sm" className="gap-1" onClick={handleGenerate} disabled={loading}>
+              {loading ? <><Loader2 className="size-3.5 animate-spin" /> Generando...</> : <><Bot className="size-3.5" /> Generar Reporte</>}
+            </Button>
           </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Ano</label>
-            <input type="number" className="form-input" value={year} onChange={e => setYear(Number(e.target.value))} min="2020" max="2030" />
-          </div>
-          <button className="btn btn-primary btn-sm" onClick={handleGenerate} disabled={loading}>
-            {loading ? <><Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> Generando...</> : <><Bot size={14} /> Generar Reporte</>}
-          </button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {loading && (
-        <div className="card text-center" style={{ padding: 40 }}>
-          <div className="spinner" />
-          <p className="text-muted mt-2">La IA esta analizando tus finanzas...</p>
-        </div>
+        <Card>
+          <CardContent className="text-center py-10">
+            <Loader2 className="size-8 animate-spin mx-auto mb-3 text-muted-foreground" />
+            <p className="text-muted-foreground">La IA esta analizando tus finanzas...</p>
+          </CardContent>
+        </Card>
       )}
 
       {report && (
-        <div className="card">
-          <div className="card-title">Reporte de {MONTHS[month - 1]} {year}</div>
-          <div className="report-content" dangerouslySetInnerHTML={{ __html: sanitizeAndFormatReport(report) }} />
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Reporte de {MONTHS[Number(month) - 1]} {year}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div
+              className="prose prose-sm dark:prose-invert max-w-none [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-6 [&_h2]:mb-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-1 [&_h4]:font-medium [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_li]:text-sm [&_strong]:font-semibold"
+              dangerouslySetInnerHTML={{ __html: sanitizeAndFormatReport(report) }}
+            />
+          </CardContent>
+        </Card>
       )}
 
       {!loading && !report && (
-        <div className="card text-center" style={{ padding: 40 }}>
-          <Bot size={48} style={{ color: 'var(--text-muted)', margin: '0 auto 12px' }} />
-          <p className="text-muted">Selecciona un mes y genera tu reporte personalizado.</p>
-          <p className="text-muted text-xs mt-2">La IA analizara tus transacciones, presupuestos, metas y deudas.</p>
-        </div>
+        <Card>
+          <CardContent className="text-center py-10">
+            <Bot className="size-12 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground">Selecciona un mes y genera tu reporte personalizado.</p>
+            <p className="text-xs text-muted-foreground mt-2">La IA analizara tus transacciones, presupuestos, metas y deudas.</p>
+          </CardContent>
+        </Card>
       )}
     </div>
   )

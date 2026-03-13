@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts'
+import { PieChart, Pie, Cell, Label } from 'recharts'
 import { CATEGORY_COLORS, formatCOP } from '../lib/constants'
-import { useTheme } from '../hooks/useTheme'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 
 function formatShort(amount) {
   if (amount >= 1000000) return `$${(amount / 1000000).toFixed(1)}M`
@@ -10,34 +11,42 @@ function formatShort(amount) {
 }
 
 export default function ExpensePieChart({ categoryData }) {
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
-
-  const { data, total } = useMemo(() => {
-    if (!categoryData) return { data: [], total: 0 }
+  const { data, total, chartConfig } = useMemo(() => {
+    if (!categoryData) return { data: [], total: 0, chartConfig: {} }
     const items = categoryData.map(c => ({ name: c.name, value: Number(c.value) }))
     const sum = items.reduce((acc, c) => acc + c.value, 0)
-    return { data: items, total: sum }
+    const config = {}
+    items.forEach(item => {
+      config[item.name] = { label: item.name, color: CATEGORY_COLORS[item.name] || '#6b7280' }
+    })
+    return { data: items, total: sum, chartConfig: config }
   }, [categoryData])
 
   if (data.length === 0) {
     return (
-      <div className="card">
-        <div className="card-title">Gastos por Categoria</div>
-        <div className="card-subtitle">Este mes</div>
-        <p className="text-muted text-sm">Sin gastos registrados</p>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Gastos por Categoria</CardTitle>
+          <CardDescription>Este mes</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-sm">Sin gastos registrados</p>
+        </CardContent>
+      </Card>
     )
   }
 
   return (
-    <div className="card">
-      <div className="card-title">Gastos por Categoria</div>
-      <div className="card-subtitle">Este mes</div>
-      <div className="pie-chart-layout">
-        <div className="pie-chart-container">
-          <ResponsiveContainer width="100%" height={180}>
+    <Card>
+      <CardHeader>
+        <CardTitle>Gastos por Categoria</CardTitle>
+        <CardDescription>Este mes</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <ChartContainer config={chartConfig} className="h-[180px] w-[180px] shrink-0">
             <PieChart>
+              <ChartTooltip content={<ChartTooltipContent formatter={(value) => formatCOP(value)} />} />
               <Pie
                 data={data}
                 dataKey="value"
@@ -57,10 +66,10 @@ export default function ExpensePieChart({ categoryData }) {
                     const { cx, cy } = viewBox
                     return (
                       <g>
-                        <text x={cx} y={cy - 6} textAnchor="middle" fill={isDark ? '#f1f5f9' : '#0f172a'} fontSize={16} fontWeight={700}>
+                        <text x={cx} y={cy - 6} textAnchor="middle" className="fill-foreground text-base font-bold">
                           {formatShort(total)}
                         </text>
-                        <text x={cx} y={cy + 14} textAnchor="middle" fill={isDark ? '#64748b' : '#94a3b8'} fontSize={11}>
+                        <text x={cx} y={cy + 14} textAnchor="middle" className="fill-muted-foreground text-xs">
                           Total
                         </text>
                       </g>
@@ -68,27 +77,23 @@ export default function ExpensePieChart({ categoryData }) {
                   }}
                 />
               </Pie>
-              <Tooltip
-                contentStyle={{ background: isDark ? '#1e293b' : '#ffffff', border: `1px solid ${isDark ? '#334155' : '#cbd5e1'}`, borderRadius: 8 }}
-                formatter={(value) => [formatCOP(value)]}
-              />
             </PieChart>
-          </ResponsiveContainer>
+          </ChartContainer>
+          <div className="flex-1 space-y-1.5 w-full">
+            {data.map(d => {
+              const pct = total > 0 ? ((d.value / total) * 100).toFixed(1) : 0
+              return (
+                <div key={d.name} className="flex items-center gap-2 text-sm">
+                  <span className="size-2.5 rounded-full shrink-0" style={{ background: CATEGORY_COLORS[d.name] || '#6b7280' }} />
+                  <span className="flex-1 truncate text-muted-foreground">{d.name}</span>
+                  <span className="font-medium tabular-nums">{formatCOP(d.value)}</span>
+                  <span className="text-xs text-muted-foreground w-10 text-right">{pct}%</span>
+                </div>
+              )
+            })}
+          </div>
         </div>
-        <div className="pie-chart-legend">
-          {data.map(d => {
-            const pct = total > 0 ? ((d.value / total) * 100).toFixed(1) : 0
-            return (
-              <div key={d.name} className="legend-item">
-                <span className="legend-dot" style={{ background: CATEGORY_COLORS[d.name] || '#6b7280' }} />
-                <span className="legend-name">{d.name}</span>
-                <span className="legend-value">{formatCOP(d.value)}</span>
-                <span className="legend-pct">{pct}%</span>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   )
 }

@@ -1,5 +1,16 @@
 import { Wallet, LayoutDashboard, Target, CreditCard, BarChart3, TrendingUp, Bot, Sun, Moon, LogOut } from 'lucide-react'
 import { formatCOP } from '../lib/constants'
+import {
+  Sidebar as SidebarRoot,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+} from '@/components/ui/sidebar'
 
 const TABS = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -20,97 +31,112 @@ const ACCOUNT_COLORS = {
   'Ahorros': '#eab308'
 }
 
-export default function Sidebar({ activeTab, setActiveTab, user, signOut, theme, toggleTheme, summary, debts, accountBalances, isOpen, collapsed, onClose }) {
+export default function AppSidebar({ activeTab, setActiveTab, user, signOut, theme, toggleTheme, debts, accountBalances }) {
   const totalDebt = debts ? debts.reduce((sum, d) => sum + Number(d.current_balance), 0) : 0
 
-  const handleNav = (key) => {
-    setActiveTab(key)
-    onClose()
-  }
-
   return (
-    <aside className={`sidebar ${isOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}>
-      <div className="sidebar-logo">
-        <Wallet size={22} />
-        {!collapsed && <span>Control del Dinero</span>}
-      </div>
-
-      <nav className="sidebar-nav">
-        {!collapsed && <div className="sidebar-section-title">Menu</div>}
-        {TABS.map(tab => {
-          const Icon = tab.icon
-          return (
-            <button
-              key={tab.key}
-              className={`sidebar-nav-item ${activeTab === tab.key ? 'active' : ''}`}
-              onClick={() => handleNav(tab.key)}
-              title={collapsed ? tab.label : undefined}
-            >
-              <Icon size={18} />
-              {!collapsed && tab.label}
-            </button>
-          )
-        })}
-      </nav>
-
-      {!collapsed && (
-        <div className="sidebar-accounts">
-          <div className="sidebar-section-title">Cuentas</div>
-          {accountBalances.map(acc => (
-            <div key={acc.name} className="sidebar-account-item">
-              <div className="sidebar-account-left">
-                <span className="sidebar-account-dot" style={{ background: ACCOUNT_COLORS[acc.name] || '#6b7280' }} />
-                <span className="sidebar-account-name">{acc.name}</span>
+    <SidebarRoot collapsible="icon">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" className="gap-2">
+              <div className="size-8 rounded-md bg-primary flex items-center justify-center text-primary-foreground">
+                <Wallet className="size-4" />
               </div>
-              <span className="sidebar-account-value" style={{ color: acc.balance >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                {formatCOP(acc.balance)}
-              </span>
-            </div>
-          ))}
-          {totalDebt > 0 && (
-            <div className="sidebar-account-item">
-              <div className="sidebar-account-left">
-                <span className="sidebar-account-dot" style={{ background: '#ef4444' }} />
-                <span className="sidebar-account-name">Total deudas</span>
-              </div>
-              <span className="sidebar-account-value" style={{ color: 'var(--red)' }}>
-                {formatCOP(totalDebt)}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
+              <span className="font-bold text-sm">Control del Dinero</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
 
-      <div className="sidebar-bottom">
-        <button className="sidebar-bottom-item" onClick={toggleTheme} title={collapsed ? (theme === 'dark' ? 'Modo claro' : 'Modo oscuro') : undefined}>
-          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          {!collapsed && (theme === 'dark' ? 'Modo claro' : 'Modo oscuro')}
-        </button>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Menu</SidebarGroupLabel>
+          <SidebarMenu>
+            {TABS.map(tab => {
+              const Icon = tab.icon
+              return (
+                <SidebarMenuItem key={tab.key}>
+                  <SidebarMenuButton
+                    isActive={activeTab === tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    tooltip={tab.label}
+                  >
+                    <Icon className="size-4" />
+                    <span>{tab.label}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )
+            })}
+          </SidebarMenu>
+        </SidebarGroup>
 
-        {user && !collapsed && (
-          <div className="sidebar-user">
-            {user.user_metadata?.avatar_url && (
-              <img
-                src={user.user_metadata.avatar_url}
-                alt=""
-                referrerPolicy="no-referrer"
-                onError={e => { e.target.style.display = 'none' }}
-              />
+        <SidebarGroup>
+          <SidebarGroupLabel>Cuentas</SidebarGroupLabel>
+          <SidebarMenu>
+            {accountBalances.map(acc => (
+              <SidebarMenuItem key={acc.name}>
+                <SidebarMenuButton className="cursor-default hover:bg-transparent">
+                  <span className="size-2 rounded-full shrink-0" style={{ background: ACCOUNT_COLORS[acc.name] || '#6b7280' }} />
+                  <span className="flex-1 truncate text-xs">{acc.name}</span>
+                  <span className={`text-xs font-medium tabular-nums ${acc.balance >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    {formatCOP(acc.balance)}
+                  </span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+            {totalDebt > 0 && (
+              <SidebarMenuItem>
+                <SidebarMenuButton className="cursor-default hover:bg-transparent">
+                  <span className="size-2 rounded-full shrink-0 bg-red-500" />
+                  <span className="flex-1 truncate text-xs">Total deudas</span>
+                  <span className="text-xs font-medium tabular-nums text-red-500">{formatCOP(totalDebt)}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             )}
-            <div>
-              <div className="sidebar-user-name">
-                {user.user_metadata?.full_name?.split(' ')[0] || user.email}
-              </div>
-              <div className="sidebar-user-email">{user.email}</div>
-            </div>
-          </div>
-        )}
+          </SidebarMenu>
+        </SidebarGroup>
+      </SidebarContent>
 
-        <button className="sidebar-bottom-item" onClick={signOut} style={{ color: 'var(--red)' }} title={collapsed ? 'Cerrar sesion' : undefined}>
-          <LogOut size={18} />
-          {!collapsed && 'Cerrar sesion'}
-        </button>
-      </div>
-    </aside>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={toggleTheme} tooltip={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
+              {theme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+              <span>{theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          {user && (
+            <SidebarMenuItem>
+              <SidebarMenuButton className="cursor-default hover:bg-transparent">
+                {user.user_metadata?.avatar_url && (
+                  <img
+                    src={user.user_metadata.avatar_url}
+                    alt=""
+                    className="size-5 rounded-full shrink-0"
+                    referrerPolicy="no-referrer"
+                    onError={e => { e.target.style.display = 'none' }}
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium truncate">
+                    {user.user_metadata?.full_name?.split(' ')[0] || user.email}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground truncate">{user.email}</div>
+                </div>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={signOut} tooltip="Cerrar sesion" className="text-red-500 hover:text-red-500">
+              <LogOut className="size-4" />
+              <span>Cerrar sesion</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </SidebarRoot>
   )
 }

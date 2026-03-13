@@ -1,15 +1,21 @@
 import { useState, useRef } from 'react'
-import { X, Upload, Loader, Check, SkipForward, RotateCcw, AlertTriangle, Lock } from 'lucide-react'
+import { Upload, Loader2, Check, SkipForward, RotateCcw, AlertTriangle, Lock } from 'lucide-react'
 import { extractTextFromPDF } from '../lib/pdfExtractor'
 import { extractStatement } from '../api/anthropic'
 import { formatCOP } from '../lib/constants'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Progress } from '@/components/ui/progress'
+import { Card } from '@/components/ui/card'
 
 const MAX_FILES = 5
-const MAX_SIZE = 10 * 1024 * 1024 // 10MB
+const MAX_SIZE = 10 * 1024 * 1024
 
 export default function UploadStatementModal({ onClose, onAdd }) {
-  const [phase, setPhase] = useState('select') // select | processing | results
+  const [phase, setPhase] = useState('select')
   const [files, setFiles] = useState([])
   const [progress, setProgress] = useState({ current: 0, total: 0, fileName: '' })
   const [results, setResults] = useState([])
@@ -54,16 +60,10 @@ export default function UploadStatementModal({ onClose, onAdd }) {
 
       try {
         const text = await extractTextFromPDF(file)
-
         if (text.trim().length < 50) {
-          fileResults.push({
-            fileName: file.name,
-            error: 'El PDF no contiene texto legible. Puede ser un documento escaneado como imagen.',
-            data: null
-          })
+          fileResults.push({ fileName: file.name, error: 'El PDF no contiene texto legible. Puede ser un documento escaneado como imagen.', data: null })
           continue
         }
-
         const data = await extractStatement(text, file.name)
         fileResults.push({ fileName: file.name, error: null, data, editing: { ...data } })
       } catch (err) {
@@ -88,31 +88,17 @@ export default function UploadStatementModal({ onClose, onAdd }) {
 
     try {
       const text = await extractTextFromPDF(file, password)
-
       if (text.trim().length < 50) {
-        setResults(prev => prev.map((r, i) => i === index ? {
-          fileName: file.name,
-          error: 'El PDF no contiene texto legible. Puede ser un documento escaneado como imagen.',
-          data: null, needsPassword: false, unlocking: false
-        } : r))
+        setResults(prev => prev.map((r, i) => i === index ? { fileName: file.name, error: 'El PDF no contiene texto legible.', data: null, needsPassword: false, unlocking: false } : r))
         return
       }
-
       const data = await extractStatement(text, file.name)
-      setResults(prev => prev.map((r, i) => i === index ? {
-        fileName: file.name, error: null, data, editing: { ...data },
-        needsPassword: false, unlocking: false
-      } : r))
+      setResults(prev => prev.map((r, i) => i === index ? { fileName: file.name, error: null, data, editing: { ...data }, needsPassword: false, unlocking: false } : r))
     } catch (err) {
       if (err.message === 'INCORRECT_PASSWORD') {
-        setResults(prev => prev.map((r, i) => i === index ? {
-          ...prev[i], passwordError: 'Contraseña incorrecta', unlocking: false
-        } : r))
+        setResults(prev => prev.map((r, i) => i === index ? { ...prev[i], passwordError: 'Contraseña incorrecta', unlocking: false } : r))
       } else {
-        setResults(prev => prev.map((r, i) => i === index ? {
-          fileName: file.name, error: err.message, data: null,
-          needsPassword: false, unlocking: false
-        } : r))
+        setResults(prev => prev.map((r, i) => i === index ? { fileName: file.name, error: err.message, data: null, needsPassword: false, unlocking: false } : r))
       }
     }
   }
@@ -120,7 +106,6 @@ export default function UploadStatementModal({ onClose, onAdd }) {
   const handleRetry = async (index) => {
     const file = files[index]
     if (!file) return
-
     const password = passwords[index]
     setResults(prev => prev.map((r, i) => i === index ? { ...r, error: null, retrying: true } : r))
 
@@ -130,10 +115,7 @@ export default function UploadStatementModal({ onClose, onAdd }) {
       setResults(prev => prev.map((r, i) => i === index ? { fileName: file.name, error: null, data, editing: { ...data }, retrying: false } : r))
     } catch (err) {
       if (err.message === 'PASSWORD_REQUIRED') {
-        setResults(prev => prev.map((r, i) => i === index ? {
-          fileName: file.name, error: null, data: null,
-          needsPassword: true, retrying: false
-        } : r))
+        setResults(prev => prev.map((r, i) => i === index ? { fileName: file.name, error: null, data: null, needsPassword: true, retrying: false } : r))
       } else {
         setResults(prev => prev.map((r, i) => i === index ? { ...prev[i], error: err.message, retrying: false } : r))
       }
@@ -189,232 +171,179 @@ export default function UploadStatementModal({ onClose, onAdd }) {
   }
 
   const allDone = results.length > 0 && results.every(r => r.confirmed || r.skipped || r.error || r.needsPassword)
-  const pendingResults = results.filter(r => !r.confirmed && !r.skipped && !r.error && !r.needsPassword && r.data)
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 600, maxHeight: '90vh', overflowY: 'auto' }}>
-        <div className="flex justify-between items-center mb-4">
-          <h2>Subir Extracto Bancario</h2>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}><X size={18} /></button>
-        </div>
+    <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Subir Extracto Bancario</DialogTitle>
+        </DialogHeader>
 
-        {/* FASE 1: Seleccion */}
         {phase === 'select' && (
           <div>
-            <p className="text-sm text-muted mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               Sube extractos PDF de tarjetas de credito o creditos bancarios colombianos para extraer automaticamente la informacion de la deuda.
             </p>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".pdf,application/pdf"
-              multiple
-              style={{ display: 'none' }}
-              onChange={handleFileSelect}
-            />
-            <button className="btn btn-primary w-full" onClick={() => fileRef.current?.click()}>
-              <Upload size={18} /> Seleccionar PDFs
-            </button>
-            <p className="text-xs text-muted mt-2" style={{ textAlign: 'center' }}>
+            <input ref={fileRef} type="file" accept=".pdf,application/pdf" multiple className="hidden" onChange={handleFileSelect} />
+            <Button className="w-full gap-2" onClick={() => fileRef.current?.click()}>
+              <Upload className="size-4" /> Seleccionar PDFs
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
               Max {MAX_FILES} archivos, 10MB cada uno
             </p>
           </div>
         )}
 
-        {/* FASE 2: Procesamiento */}
         {phase === 'processing' && (
-          <div className="text-center" style={{ padding: 32 }}>
-            <Loader size={32} className="spinner" style={{ margin: '0 auto 16px', border: 'none', animation: 'spin 1s linear infinite' }} />
-            <p style={{ fontWeight: 600, marginBottom: 8 }}>
-              Procesando {progress.current} de {progress.total}
-            </p>
-            <p className="text-sm text-muted">{progress.fileName}</p>
-            <div className="progress-bar mt-4">
-              <div
-                className="progress-fill"
-                style={{ width: `${(progress.current / progress.total) * 100}%`, background: 'var(--primary)' }}
-              />
-            </div>
+          <div className="text-center py-8">
+            <Loader2 className="size-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+            <p className="font-semibold mb-2">Procesando {progress.current} de {progress.total}</p>
+            <p className="text-sm text-muted-foreground">{progress.fileName}</p>
+            <Progress value={(progress.current / progress.total) * 100} className="mt-4" />
           </div>
         )}
 
-        {/* FASE 3: Resultados */}
         {phase === 'results' && (
-          <div>
+          <div className="space-y-3">
             {results.map((result, idx) => {
               if (result.confirmed) {
                 return (
-                  <div key={idx} className="card mb-3" style={{ opacity: 0.6 }}>
+                  <Card key={idx} className="p-3 opacity-60">
                     <div className="flex items-center gap-2">
-                      <Check size={16} style={{ color: '#22c55e' }} />
+                      <Check className="size-4 text-green-500" />
                       <span className="text-sm">{result.fileName} — Guardado</span>
                     </div>
-                  </div>
+                  </Card>
                 )
               }
 
               if (result.skipped) {
                 return (
-                  <div key={idx} className="card mb-3" style={{ opacity: 0.5 }}>
+                  <Card key={idx} className="p-3 opacity-50">
                     <div className="flex items-center gap-2">
-                      <SkipForward size={16} style={{ color: 'var(--text-muted)' }} />
-                      <span className="text-sm text-muted">{result.fileName} — Omitido</span>
+                      <SkipForward className="size-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">{result.fileName} — Omitido</span>
                     </div>
-                  </div>
+                  </Card>
                 )
               }
 
               if (result.needsPassword) {
                 return (
-                  <div key={idx} className="card mb-3" style={{ borderColor: '#f59e0b' }}>
+                  <Card key={idx} className="p-3 border-yellow-500/50">
                     <div className="flex items-center gap-2 mb-2">
-                      <Lock size={16} style={{ color: '#f59e0b' }} />
-                      <span className="text-sm" style={{ fontWeight: 600 }}>{result.fileName}</span>
+                      <Lock className="size-4 text-yellow-500" />
+                      <span className="text-sm font-semibold">{result.fileName}</span>
                     </div>
-                    <p className="text-sm text-muted mb-2">Este PDF esta protegido con contraseña.</p>
-                    <div className="form-group mb-2">
-                      <input
-                        type="password"
-                        className="form-input"
-                        placeholder="Contraseña del PDF"
-                        value={passwords[idx] || ''}
-                        onChange={e => setPasswords(prev => ({ ...prev, [idx]: e.target.value }))}
-                        onKeyDown={e => { if (e.key === 'Enter' && passwords[idx]) handleUnlock(idx) }}
-                        disabled={result.unlocking}
-                      />
-                    </div>
-                    <p className="text-xs text-muted mb-3">Generalmente es tu numero de cedula</p>
-                    {result.passwordError && (
-                      <p className="text-sm mb-2" style={{ color: '#ef4444' }}>{result.passwordError}</p>
-                    )}
+                    <p className="text-sm text-muted-foreground mb-2">Este PDF esta protegido con contraseña.</p>
+                    <Input
+                      type="password"
+                      placeholder="Contraseña del PDF"
+                      value={passwords[idx] || ''}
+                      onChange={e => setPasswords(prev => ({ ...prev, [idx]: e.target.value }))}
+                      onKeyDown={e => { if (e.key === 'Enter' && passwords[idx]) handleUnlock(idx) }}
+                      disabled={result.unlocking}
+                      className="mb-1"
+                    />
+                    <p className="text-xs text-muted-foreground mb-3">Generalmente es tu numero de cedula</p>
+                    {result.passwordError && <p className="text-sm text-destructive mb-2">{result.passwordError}</p>}
                     <div className="flex gap-2">
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        style={{ flex: 1 }}
-                        onClick={() => handleSkip(idx)}
-                      >
-                        <SkipForward size={14} /> Omitir
-                      </button>
-                      <button
-                        className="btn btn-primary btn-sm"
-                        style={{ flex: 1 }}
-                        onClick={() => handleUnlock(idx)}
-                        disabled={!passwords[idx] || result.unlocking}
-                      >
-                        {result.unlocking
-                          ? <><Loader size={14} className="spinner" style={{ border: 'none', animation: 'spin 1s linear infinite' }} /> Desbloqueando...</>
-                          : <><Lock size={14} /> Desbloquear</>
-                        }
-                      </button>
+                      <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={() => handleSkip(idx)}>
+                        <SkipForward className="size-3.5" /> Omitir
+                      </Button>
+                      <Button size="sm" className="flex-1 gap-1" onClick={() => handleUnlock(idx)} disabled={!passwords[idx] || result.unlocking}>
+                        {result.unlocking ? <><Loader2 className="size-3.5 animate-spin" /> Desbloqueando...</> : <><Lock className="size-3.5" /> Desbloquear</>}
+                      </Button>
                     </div>
-                  </div>
+                  </Card>
                 )
               }
 
               if (result.error) {
                 return (
-                  <div key={idx} className="card mb-3" style={{ borderColor: '#ef4444' }}>
+                  <Card key={idx} className="p-3 border-destructive/50">
                     <div className="flex items-center gap-2 mb-2">
-                      <AlertTriangle size={16} style={{ color: '#ef4444' }} />
-                      <span className="text-sm" style={{ fontWeight: 600 }}>{result.fileName}</span>
+                      <AlertTriangle className="size-4 text-destructive" />
+                      <span className="text-sm font-semibold">{result.fileName}</span>
                     </div>
-                    <p className="text-sm text-muted mb-3">{result.error}</p>
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => handleRetry(idx)}
-                      disabled={result.retrying}
-                    >
-                      {result.retrying ? <Loader size={14} className="spinner" style={{ border: 'none', animation: 'spin 1s linear infinite' }} /> : <RotateCcw size={14} />}
+                    <p className="text-sm text-muted-foreground mb-3">{result.error}</p>
+                    <Button variant="outline" size="sm" className="gap-1" onClick={() => handleRetry(idx)} disabled={result.retrying}>
+                      {result.retrying ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
                       {result.retrying ? ' Reintentando...' : ' Reintentar'}
-                    </button>
-                  </div>
+                    </Button>
+                  </Card>
                 )
               }
 
               const e = result.editing
               return (
-                <div key={idx} className="card mb-3">
-                  <div className="text-sm" style={{ fontWeight: 600, marginBottom: 12 }}>{result.fileName}</div>
-
-                  <div className="flex gap-3" style={{ flexWrap: 'wrap' }}>
-                    <div className="form-group" style={{ flex: 1, minWidth: 140 }}>
-                      <label>Banco</label>
-                      <input type="text" className="form-input" value={e.bank_name || ''} onChange={ev => updateField(idx, 'bank_name', ev.target.value)} />
+                <Card key={idx} className="p-3">
+                  <div className="text-sm font-semibold mb-3">{result.fileName}</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Banco</Label>
+                      <Input type="text" value={e.bank_name || ''} onChange={ev => updateField(idx, 'bank_name', ev.target.value)} />
                     </div>
-                    <div className="form-group" style={{ flex: 1, minWidth: 100 }}>
-                      <label>Ultimos 4 digitos</label>
-                      <input type="text" className="form-input" maxLength={4} value={e.card_last_four || ''} onChange={ev => updateField(idx, 'card_last_four', ev.target.value)} />
+                    <div className="space-y-1">
+                      <Label className="text-xs">Ultimos 4 digitos</Label>
+                      <Input type="text" maxLength={4} value={e.card_last_four || ''} onChange={ev => updateField(idx, 'card_last_four', ev.target.value)} />
                     </div>
-                  </div>
-
-                  <div className="flex gap-3" style={{ flexWrap: 'wrap' }}>
-                    <div className="form-group" style={{ flex: 1, minWidth: 140 }}>
-                      <label>Saldo total (COP)</label>
-                      <input type="number" className="form-input" value={e.total_owed ?? ''} onChange={ev => updateField(idx, 'total_owed', ev.target.value)} />
+                    <div className="space-y-1">
+                      <Label className="text-xs">Saldo total (COP)</Label>
+                      <Input type="number" value={e.total_owed ?? ''} onChange={ev => updateField(idx, 'total_owed', ev.target.value)} />
                     </div>
-                    <div className="form-group" style={{ flex: 1, minWidth: 140 }}>
-                      <label>Pago minimo (COP)</label>
-                      <input type="number" className="form-input" value={e.minimum_payment ?? ''} onChange={ev => updateField(idx, 'minimum_payment', ev.target.value)} />
+                    <div className="space-y-1">
+                      <Label className="text-xs">Pago minimo (COP)</Label>
+                      <Input type="number" value={e.minimum_payment ?? ''} onChange={ev => updateField(idx, 'minimum_payment', ev.target.value)} />
                     </div>
-                  </div>
-
-                  <div className="flex gap-3" style={{ flexWrap: 'wrap' }}>
-                    <div className="form-group" style={{ flex: 1, minWidth: 140 }}>
-                      <label>Fecha limite de pago</label>
-                      <input type="date" className="form-input" value={e.payment_deadline || ''} onChange={ev => updateField(idx, 'payment_deadline', ev.target.value)} />
+                    <div className="space-y-1">
+                      <Label className="text-xs">Fecha limite</Label>
+                      <Input type="date" value={e.payment_deadline || ''} onChange={ev => updateField(idx, 'payment_deadline', ev.target.value)} />
                     </div>
-                    <div className="form-group" style={{ flex: 1, minWidth: 120 }}>
-                      <label>Tasa mensual (%)</label>
-                      <input type="number" className="form-input" step="0.01" value={e.monthly_interest_rate ?? ''} onChange={ev => updateField(idx, 'monthly_interest_rate', ev.target.value)} />
+                    <div className="space-y-1">
+                      <Label className="text-xs">Tasa mensual (%)</Label>
+                      <Input type="number" step="0.01" value={e.monthly_interest_rate ?? ''} onChange={ev => updateField(idx, 'monthly_interest_rate', ev.target.value)} />
                     </div>
-                    <div className="form-group" style={{ flex: 1, minWidth: 120 }}>
-                      <label>Tasa EA (%)</label>
-                      <input type="number" className="form-input" step="0.01" value={e.annual_interest_rate ?? ''} onChange={ev => updateField(idx, 'annual_interest_rate', ev.target.value)} />
+                    <div className="space-y-1">
+                      <Label className="text-xs">Tasa EA (%)</Label>
+                      <Input type="number" step="0.01" value={e.annual_interest_rate ?? ''} onChange={ev => updateField(idx, 'annual_interest_rate', ev.target.value)} />
                     </div>
-                  </div>
-
-                  <div className="flex gap-3" style={{ flexWrap: 'wrap' }}>
-                    <div className="form-group" style={{ flex: 1, minWidth: 120 }}>
-                      <label>Intereses periodo</label>
-                      <input type="number" className="form-input" value={e.period_interest ?? ''} onChange={ev => updateField(idx, 'period_interest', ev.target.value)} />
+                    <div className="space-y-1">
+                      <Label className="text-xs">Intereses periodo</Label>
+                      <Input type="number" value={e.period_interest ?? ''} onChange={ev => updateField(idx, 'period_interest', ev.target.value)} />
                     </div>
-                    <div className="form-group" style={{ flex: 1, minWidth: 120 }}>
-                      <label>Saldo en mora</label>
-                      <input type="number" className="form-input" value={e.overdue_balance ?? ''} onChange={ev => updateField(idx, 'overdue_balance', ev.target.value)} />
+                    <div className="space-y-1">
+                      <Label className="text-xs">Saldo en mora</Label>
+                      <Input type="number" value={e.overdue_balance ?? ''} onChange={ev => updateField(idx, 'overdue_balance', ev.target.value)} />
                     </div>
-                    <div className="form-group" style={{ flex: 1, minWidth: 120 }}>
-                      <label>Avances efectivo</label>
-                      <input type="number" className="form-input" value={e.cash_advances ?? ''} onChange={ev => updateField(idx, 'cash_advances', ev.target.value)} />
+                    <div className="space-y-1">
+                      <Label className="text-xs">Avances efectivo</Label>
+                      <Input type="number" value={e.cash_advances ?? ''} onChange={ev => updateField(idx, 'cash_advances', ev.target.value)} />
                     </div>
                   </div>
-
                   {e.total_owed && (
-                    <div className="text-sm text-muted mb-3" style={{ background: 'rgba(255,255,255,0.05)', padding: '8px 12px', borderRadius: 8 }}>
+                    <div className="text-sm text-muted-foreground mt-3 p-2 rounded-md bg-muted">
                       Deuda: <strong>{e.bank_name || 'Banco'}{e.card_last_four ? ` *${e.card_last_four}` : ''}</strong> — {formatCOP(Number(e.total_owed))}
                     </div>
                   )}
-
-                  <div className="flex gap-2">
-                    <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => handleSkip(idx)}>
-                      <SkipForward size={14} /> Omitir
-                    </button>
-                    <button className="btn btn-success btn-sm" style={{ flex: 1 }} onClick={() => handleConfirm(idx)}>
-                      <Check size={14} /> Confirmar
-                    </button>
+                  <div className="flex gap-2 mt-3">
+                    <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={() => handleSkip(idx)}>
+                      <SkipForward className="size-3.5" /> Omitir
+                    </Button>
+                    <Button size="sm" className="flex-1 gap-1 bg-green-600 hover:bg-green-700" onClick={() => handleConfirm(idx)}>
+                      <Check className="size-3.5" /> Confirmar
+                    </Button>
                   </div>
-                </div>
+                </Card>
               )
             })}
 
-            {allDone && pendingResults.length === 0 && (
-              <button className="btn btn-primary w-full mt-2" onClick={onClose}>
-                Cerrar
-              </button>
+            {allDone && (
+              <Button className="w-full mt-2" onClick={onClose}>Cerrar</Button>
             )}
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

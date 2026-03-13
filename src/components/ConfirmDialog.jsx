@@ -1,16 +1,29 @@
-import { AlertTriangle } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export default function ConfirmDialog({ message, onConfirm, onCancel }) {
   return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 360, textAlign: 'center' }}>
-        <AlertTriangle size={36} style={{ color: 'var(--yellow)', margin: '0 auto 12px' }} />
-        <p style={{ marginBottom: 20, fontSize: '0.95rem' }}>{message}</p>
-        <div className="flex gap-2" style={{ justifyContent: 'center' }}>
-          <button className="btn btn-ghost btn-sm" onClick={onCancel} style={{ flex: 1, justifyContent: 'center' }}>Cancelar</button>
-          <button className="btn btn-danger btn-sm" onClick={onConfirm} style={{ flex: 1, justifyContent: 'center' }}>Eliminar</button>
-        </div>
-      </div>
-    </div>
+    <AlertDialog open onOpenChange={(open) => { if (!open) onCancel() }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Confirmar accion</AlertDialogTitle>
+          <AlertDialogDescription>{message}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onCancel}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm} className="bg-destructive text-white hover:bg-destructive/90">
+            Eliminar
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

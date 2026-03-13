@@ -1,17 +1,24 @@
 import { useMemo, useState } from 'react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, Cell } from 'recharts'
 import { MONTHS, EXPENSE_CATEGORIES, CATEGORY_COLORS, formatCOP } from '../lib/constants'
-import { useTheme } from '../hooks/useTheme'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+
+const incomeExpenseConfig = {
+  ingresos: { label: 'Ingresos', color: '#22c55e' },
+  gastos: { label: 'Gastos', color: '#ef4444' }
+}
+
+const savingsConfig = {
+  ahorro: { label: 'Ahorro neto', color: '#22c55e' }
+}
 
 export default function HistoryPage({ monthlyData, categoryData }) {
-  const { theme } = useTheme()
-  const isDark = theme === 'dark'
-  const [view, setView] = useState('income-vs-expense')
-
   const chartData = useMemo(() => {
     if (!monthlyData || monthlyData.length === 0) return []
 
-    // Build category lookup: { 'YYYY-MM': { Comida: 500, ... } }
     const catByMonth = {}
     if (categoryData) {
       categoryData.forEach(r => {
@@ -38,96 +45,119 @@ export default function HistoryPage({ monthlyData, categoryData }) {
 
   if (!monthlyData || monthlyData.length === 0) {
     return (
-      <div className="card text-center" style={{ padding: 40 }}>
-        <p className="text-muted">Agrega transacciones para ver el historial.</p>
-      </div>
+      <Card>
+        <CardContent className="text-center py-10">
+          <p className="text-muted-foreground">Agrega transacciones para ver el historial.</p>
+        </CardContent>
+      </Card>
     )
   }
 
+  const categoryConfig = {}
+  EXPENSE_CATEGORIES.forEach(cat => {
+    categoryConfig[cat] = { label: cat, color: CATEGORY_COLORS[cat] || '#6b7280' }
+  })
+
   return (
-    <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2>Historial</h2>
-        <div className="filter-tabs">
-          {[
-            { key: 'income-vs-expense', label: 'Ingresos vs Gastos' },
-            { key: 'savings', label: 'Ahorro neto' },
-            { key: 'categories', label: 'Categorias' }
-          ].map(v => (
-            <button key={v.key} className={`filter-tab ${view === v.key ? 'active' : ''}`} onClick={() => setView(v.key)}>
-              {v.label}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="space-y-4">
+      <h2 className="text-xl font-bold">Historial</h2>
 
-      <div className="card mb-4">
-        <ResponsiveContainer width="100%" height={300}>
-          {view === 'income-vs-expense' ? (
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#334155' : '#e2e8f0'} />
-              <XAxis dataKey="label" stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={12} />
-              <YAxis stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={12} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
-              <Tooltip contentStyle={{ background: isDark ? '#1e293b' : '#ffffff', border: `1px solid ${isDark ? '#334155' : '#cbd5e1'}`, borderRadius: 8 }} formatter={v => formatCOP(v)} />
-              <Legend />
-              <Bar dataKey="ingresos" fill="#22c55e" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="gastos" fill="#ef4444" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          ) : view === 'savings' ? (
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#334155' : '#e2e8f0'} />
-              <XAxis dataKey="label" stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={12} />
-              <YAxis stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={12} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
-              <Tooltip contentStyle={{ background: isDark ? '#1e293b' : '#ffffff', border: `1px solid ${isDark ? '#334155' : '#cbd5e1'}`, borderRadius: 8 }} formatter={v => formatCOP(v)} />
-              <Bar dataKey="ahorro" radius={[4, 4, 0, 0]}>
-                {chartData.map((entry, i) => (
-                  <Cell key={i} fill={entry.ahorro >= 0 ? '#22c55e' : '#ef4444'} />
+      <Tabs defaultValue="income-vs-expense">
+        <TabsList>
+          <TabsTrigger value="income-vs-expense">Ingresos vs Gastos</TabsTrigger>
+          <TabsTrigger value="savings">Ahorro neto</TabsTrigger>
+          <TabsTrigger value="categories">Categorias</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="income-vs-expense">
+          <Card>
+            <CardContent className="pt-6">
+              <ChartContainer config={incomeExpenseConfig} className="h-[300px] w-full">
+                <BarChart data={chartData}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} />
+                  <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
+                  <ChartTooltip content={<ChartTooltipContent formatter={v => formatCOP(v)} />} />
+                  <Legend />
+                  <Bar dataKey="ingresos" fill="var(--color-ingresos)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="gastos" fill="var(--color-gastos)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="savings">
+          <Card>
+            <CardContent className="pt-6">
+              <ChartContainer config={savingsConfig} className="h-[300px] w-full">
+                <BarChart data={chartData}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} />
+                  <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
+                  <ChartTooltip content={<ChartTooltipContent formatter={v => formatCOP(v)} />} />
+                  <Bar dataKey="ahorro" radius={[4, 4, 0, 0]}>
+                    {chartData.map((entry, i) => (
+                      <Cell key={i} fill={entry.ahorro >= 0 ? '#22c55e' : '#ef4444'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="categories">
+          <Card>
+            <CardContent className="pt-6">
+              <ChartContainer config={categoryConfig} className="h-[300px] w-full">
+                <BarChart data={chartData}>
+                  <CartesianGrid vertical={false} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} />
+                  <YAxis tickLine={false} axisLine={false} fontSize={12} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
+                  <ChartTooltip content={<ChartTooltipContent formatter={v => formatCOP(v)} />} />
+                  <Legend />
+                  {EXPENSE_CATEGORIES.map(cat => (
+                    <Bar key={cat} dataKey={cat} name={cat} stackId="a" fill={CATEGORY_COLORS[cat] || '#6b7280'} />
+                  ))}
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Resumen por Mes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Mes</TableHead>
+                  <TableHead>Ingresos</TableHead>
+                  <TableHead>Gastos</TableHead>
+                  <TableHead>Ahorro Neto</TableHead>
+                  <TableHead>% Ahorro</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {chartData.map(m => (
+                  <TableRow key={m.month}>
+                    <TableCell>{m.label}</TableCell>
+                    <TableCell className="text-green-500">{formatCOP(m.ingresos)}</TableCell>
+                    <TableCell className="text-red-500">{formatCOP(m.gastos)}</TableCell>
+                    <TableCell className={m.ahorro >= 0 ? 'text-green-500' : 'text-red-500'}>{formatCOP(m.ahorro)}</TableCell>
+                    <TableCell className={Number(m.pctAhorro) >= 0 ? 'text-green-500' : 'text-red-500'}>{m.pctAhorro}%</TableCell>
+                  </TableRow>
                 ))}
-              </Bar>
-            </BarChart>
-          ) : (
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#334155' : '#e2e8f0'} />
-              <XAxis dataKey="label" stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={12} />
-              <YAxis stroke={isDark ? '#94a3b8' : '#64748b'} fontSize={12} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
-              <Tooltip contentStyle={{ background: isDark ? '#1e293b' : '#ffffff', border: `1px solid ${isDark ? '#334155' : '#cbd5e1'}`, borderRadius: 8 }} formatter={v => formatCOP(v)} />
-              <Legend />
-              {EXPENSE_CATEGORIES.map(cat => (
-                <Bar key={cat} dataKey={cat} name={cat} stackId="a" fill={CATEGORY_COLORS[cat] || '#6b7280'} />
-              ))}
-            </BarChart>
-          )}
-        </ResponsiveContainer>
-      </div>
-
-      {/* Tabla resumen */}
-      <div className="card">
-        <div className="card-title">Resumen por Mes</div>
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Mes</th>
-                <th>Ingresos</th>
-                <th>Gastos</th>
-                <th>Ahorro Neto</th>
-                <th>% Ahorro</th>
-              </tr>
-            </thead>
-            <tbody>
-              {chartData.map(m => (
-                <tr key={m.month}>
-                  <td>{m.label}</td>
-                  <td className="text-green">{formatCOP(m.ingresos)}</td>
-                  <td className="text-red">{formatCOP(m.gastos)}</td>
-                  <td className={m.ahorro >= 0 ? 'text-green' : 'text-red'}>{formatCOP(m.ahorro)}</td>
-                  <td className={Number(m.pctAhorro) >= 0 ? 'text-green' : 'text-red'}>{m.pctAhorro}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useState, useCallback, lazy, Suspense } from 'react'
-import { Toaster } from 'react-hot-toast'
+import { Toaster } from '@/components/ui/sonner'
 import { useAuth } from './hooks/useAuth'
 import { useTransactions } from './hooks/useTransactions'
 import { useBudgets } from './hooks/useBudgets'
@@ -14,9 +14,11 @@ import TransactionTable from './components/TransactionTable'
 import BudgetOverview from './components/BudgetOverview'
 import ExportButtons from './components/ExportButtons'
 import { useTheme } from './hooks/useTheme'
-import { Plus, Camera } from 'lucide-react'
+import { SidebarProvider } from '@/components/ui/sidebar'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { Plus, Camera, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
-// Lazy load pages that are not shown on initial render
 const BudgetsPage = lazy(() => import('./pages/BudgetsPage'))
 const GoalsPage = lazy(() => import('./pages/GoalsPage'))
 const DebtsPage = lazy(() => import('./pages/DebtsPage'))
@@ -24,13 +26,12 @@ const HistoryPage = lazy(() => import('./pages/HistoryPage'))
 const InvestmentPage = lazy(() => import('./pages/InvestmentPage'))
 const AIReportPage = lazy(() => import('./pages/AIReportPage'))
 
-// Lazy load modals — only loaded when user opens them
 const AddTransactionModal = lazy(() => import('./components/AddTransactionModal'))
 const ScanReceiptModal = lazy(() => import('./components/ScanReceiptModal'))
 
 const PageSpinner = () => (
-  <div style={{ padding: 40, textAlign: 'center' }}>
-    <div className="spinner" />
+  <div className="flex items-center justify-center py-10">
+    <Loader2 className="size-6 animate-spin text-muted-foreground" />
   </div>
 )
 
@@ -69,8 +70,8 @@ export default function App() {
 
   if (authLoading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-        <div className="spinner" />
+      <div className="flex items-center justify-center min-h-svh">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
       </div>
     )
   }
@@ -82,150 +83,149 @@ export default function App() {
   const topbarActions = <ExportButtons onExportData={fetchAllForExport} budgets={budgets} goals={goals} debts={debts} />
 
   return (
-    <>
-      <Toaster position="top-right" toastOptions={{
-        style: { background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1px solid var(--border)' }
-      }} />
-
-      <Layout
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        user={user}
-        signOut={signOut}
-        theme={theme}
-        toggleTheme={toggleTheme}
-        summary={summary}
-        debts={debts}
-        accountBalances={accountBalances}
-        topbarActions={topbarActions}
-      >
-        {activeTab === 'dashboard' && (
-          <div>
-            <div className="welcome-bar">
-              <div className="welcome-text">
-                <span className="welcome-greeting">Hola, {user.user_metadata?.full_name?.split(' ')[0] || 'usuario'}</span>
+    <TooltipProvider>
+      <SidebarProvider>
+        <Layout
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          user={user}
+          signOut={signOut}
+          theme={theme}
+          toggleTheme={toggleTheme}
+          summary={summary}
+          debts={debts}
+          accountBalances={accountBalances}
+          topbarActions={topbarActions}
+        >
+          {activeTab === 'dashboard' && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="text-lg font-semibold">
+                  Hola, {user.user_metadata?.full_name?.split(' ')[0] || 'usuario'}
+                </span>
+                <div className="flex gap-2">
+                  <Button size="sm" className="gap-1 bg-green-600 hover:bg-green-700" onClick={handleOpenIngreso}>
+                    <Plus className="size-3.5" /> Agregar ingreso
+                  </Button>
+                  <Button size="sm" variant="destructive" className="gap-1" onClick={handleOpenGasto}>
+                    <Plus className="size-3.5" /> Agregar gasto
+                  </Button>
+                  <Button size="sm" variant="outline" className="gap-1" onClick={handleOpenScan}>
+                    <Camera className="size-3.5" /> Escanear factura
+                  </Button>
+                </div>
               </div>
-              <div className="welcome-actions">
-                <button className="btn btn-success btn-sm" onClick={handleOpenIngreso}>
-                  <Plus size={14} /> Agregar ingreso
-                </button>
-                <button className="btn btn-danger btn-sm" onClick={handleOpenGasto}>
-                  <Plus size={14} /> Agregar gasto
-                </button>
-                <button className="btn btn-ghost btn-sm" onClick={handleOpenScan}>
-                  <Camera size={14} /> Escanear factura
-                </button>
+
+              <KPICards summary={summary} budgets={budgets} />
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <MonthlyChart />
+                <ExpensePieChart categoryData={summary?.expense_by_category} />
               </div>
+
+              <BudgetOverview
+                groupedBudgets={groupedBudgets}
+                spentByCategory={spentByCategory}
+                onNavigate={handleNavigateBudgets}
+              />
+
+              <TransactionTable
+                transactions={transactions}
+                totalCount={totalCount}
+                page={page}
+                setPage={setPage}
+                pageSize={pageSize}
+                filter={filter}
+                setFilter={setFilter}
+                search={search}
+                setSearch={setSearch}
+                onDelete={deleteTransaction}
+                onUpdate={updateTransaction}
+                loading={txLoading}
+                summary={summary}
+              />
             </div>
-
-            <KPICards summary={summary} budgets={budgets} />
-
-            <div className="grid-charts">
-              <MonthlyChart />
-              <ExpensePieChart categoryData={summary?.expense_by_category} />
-            </div>
-
-            <BudgetOverview
-              groupedBudgets={groupedBudgets}
-              spentByCategory={spentByCategory}
-              onNavigate={handleNavigateBudgets}
-            />
-
-            <TransactionTable
-              transactions={transactions}
-              totalCount={totalCount}
-              page={page}
-              setPage={setPage}
-              pageSize={pageSize}
-              filter={filter}
-              setFilter={setFilter}
-              search={search}
-              setSearch={setSearch}
-              onDelete={deleteTransaction}
-              onUpdate={updateTransaction}
-              loading={txLoading}
-              summary={summary}
-            />
-          </div>
-        )}
-
-        <Suspense fallback={<PageSpinner />}>
-          {activeTab === 'budgets' && (
-            <BudgetsPage
-              groupedBudgets={groupedBudgets}
-              spentByCategory={spentByCategory}
-              loading={budgetsLoading}
-              selectedMonth={selectedMonth}
-              setSelectedMonth={setSelectedMonth}
-              onAddItem={addBudgetItem}
-              onUpdateItem={updateBudgetItem}
-              onDeleteItem={deleteBudgetItem}
-              onDeleteCategory={deleteCategory}
-              onDuplicateMonth={duplicateMonth}
-              getAvailableMonths={getAvailableMonths}
-            />
           )}
 
-          {activeTab === 'goals' && (
-            <GoalsPage
-              goals={goals}
-              loading={goalsLoading}
-              onAdd={addGoal}
-              onAddToGoal={addToGoal}
-              onUpdate={updateGoal}
-              onDelete={deleteGoal}
+          <Suspense fallback={<PageSpinner />}>
+            {activeTab === 'budgets' && (
+              <BudgetsPage
+                groupedBudgets={groupedBudgets}
+                spentByCategory={spentByCategory}
+                loading={budgetsLoading}
+                selectedMonth={selectedMonth}
+                setSelectedMonth={setSelectedMonth}
+                onAddItem={addBudgetItem}
+                onUpdateItem={updateBudgetItem}
+                onDeleteItem={deleteBudgetItem}
+                onDeleteCategory={deleteCategory}
+                onDuplicateMonth={duplicateMonth}
+                getAvailableMonths={getAvailableMonths}
+              />
+            )}
+
+            {activeTab === 'goals' && (
+              <GoalsPage
+                goals={goals}
+                loading={goalsLoading}
+                onAdd={addGoal}
+                onAddToGoal={addToGoal}
+                onUpdate={updateGoal}
+                onDelete={deleteGoal}
+              />
+            )}
+
+            {activeTab === 'debts' && (
+              <DebtsPage
+                debts={debts}
+                loading={debtsLoading}
+                onAdd={addDebt}
+                onPay={payDebt}
+                onUpdate={updateDebt}
+                onDelete={deleteDebt}
+                onAddTransaction={addTransaction}
+              />
+            )}
+
+            {activeTab === 'history' && (
+              <HistoryPage
+                monthlyData={summary?.history_monthly}
+                categoryData={summary?.history_categories}
+              />
+            )}
+
+            {activeTab === 'investment' && (
+              <InvestmentPage />
+            )}
+
+            {activeTab === 'report' && (
+              <AIReportPage
+                budgets={budgets}
+                goals={goals}
+                debts={debts}
+              />
+            )}
+          </Suspense>
+        </Layout>
+
+        <Suspense fallback={null}>
+          {addModalType && (
+            <AddTransactionModal
+              initialType={addModalType}
+              onClose={handleCloseModal}
+              onAdd={addTransaction}
             />
           )}
-
-          {activeTab === 'debts' && (
-            <DebtsPage
-              debts={debts}
-              loading={debtsLoading}
-              onAdd={addDebt}
-              onPay={payDebt}
-              onUpdate={updateDebt}
-              onDelete={deleteDebt}
-              onAddTransaction={addTransaction}
-            />
-          )}
-
-          {activeTab === 'history' && (
-            <HistoryPage
-              monthlyData={summary?.history_monthly}
-              categoryData={summary?.history_categories}
-            />
-          )}
-
-          {activeTab === 'investment' && (
-            <InvestmentPage />
-          )}
-
-          {activeTab === 'report' && (
-            <AIReportPage
-              budgets={budgets}
-              goals={goals}
-              debts={debts}
+          {showScanModal && (
+            <ScanReceiptModal
+              onClose={handleCloseScan}
+              onAdd={addTransaction}
             />
           )}
         </Suspense>
-      </Layout>
 
-      {/* Modals */}
-      <Suspense fallback={null}>
-        {addModalType && (
-          <AddTransactionModal
-            initialType={addModalType}
-            onClose={handleCloseModal}
-            onAdd={addTransaction}
-          />
-        )}
-        {showScanModal && (
-          <ScanReceiptModal
-            onClose={handleCloseScan}
-            onAdd={addTransaction}
-          />
-        )}
-      </Suspense>
-    </>
+        <Toaster position="top-right" richColors />
+      </SidebarProvider>
+    </TooltipProvider>
   )
 }
